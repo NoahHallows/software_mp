@@ -92,6 +92,7 @@ def main():
     with Pool(processes=multiprocessing.cpu_count()) as pool:
         # Map the image processing function over the images
         results = pool.map(face_recog, images_to_search)
+    results = [item for item in results if item is not None]
     print(f"Done with images search. {len(results)} matches found.")
     # Optionally display matched images
     print(results)
