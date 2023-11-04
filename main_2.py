@@ -16,9 +16,12 @@ try:
 except:
     print("enter a valid number")
     exit()
-# Load the image containing the face you want to look for
-face_to_search_for = face_recognition.load_image_file(face_to_search_for_location)
-face_to_search_for_encoding = face_recognition.face_encodings(face_to_search_for)[0]
+try:
+    # Load the image containing the face you want to look for
+    face_to_search_for = face_recognition.load_image_file(face_to_search_for_location)
+    face_to_search_for_encoding = face_recognition.face_encodings(face_to_search_for)[0]
+except:
+    print("Error accessing images containg face to search for, please try again")
 
 #load overlay image
 overlay_location = "/home/noah/Documents/software_mp/Laughing_man.png"
@@ -91,6 +94,7 @@ def main():
         results = pool.map(face_recog, images_to_search)
     print(f"Done with images search. {len(results)} matches found.")
     # Optionally display matched images
+    print(results)
     display = input("Do you want to view the images that match? (y/n): ")
     if display.lower() == "y":
         display_image(results)
@@ -131,7 +135,6 @@ def face_recog(image_name):
 
             else:
                 print(f"Image {image_name} doesn't match")
-                return 0
         else:
             print(f"No faces found in image {image_name}")
 
