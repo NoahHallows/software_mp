@@ -3,7 +3,7 @@ import os
 import cv2 as cv
 import sys
 import multiprocessing
-from multiprocessing import Pool
+from multiprocessing import Pool, Thread, Queue
 
 
 face_to_search_for_location = "/home/noah/Documents/software_mp/test data/img2.jpg"
@@ -147,7 +147,105 @@ def face_recog(image_name):
         print(f"An error occurred with image {image_name}: {e}")
 
 def video():
-    cap = cv.VideoCapture(0)
+    frame_queue = Queue()
+    
+    # Start the frame capture thread
+    capture_thread = Thread(target=capture_frames, args=(frame_queue,))
+    capture_thread.start()
+    
+    # Start the frame processing thread
+    process_thread = Thread(target=process_frames, args=(frame_queue,))
+    process_thread.start()
+
+    capture_thread.join()
+    process_thread.join()
+
+def capture_frames(queue):
+    # Capture the video from the webcam
+    video_capture = cv.VideoCapture(0)
+    
+    while True:
+        # Grab a single frame of video (resize for faster processing)
+        ret, frame = video_capture.read()
+        if not ret:
+            print("Can't receive frame (stream end?). Exiting ...")
+            break
+        # Resize frame for faster face recognition processing
+        small_frame = cv.resize(frame, (0, 0), fx=0.25, fy=0.25)
+        # Put the frame into the queue for processing
+        queue.put(small_frame)
+
+    video_capture.release()
+
+def process_frames(queue):
+    global face_locations, face_encodings, process_this_frame
+    while True:
+        if not queue.empty():
+            frame = queue.get()
+            # Only process every other frame to save time
+            if process_this_frame:
+                # Find all the faces and face encodings in the current frame
+                face_locations = face_recognition.face_locations(frame)
+                face_encodings = face_recognition.face_encodings(frame, face_locations)
+            
+            process_this_frame = not process_this_frame
+
+            # Display the results
+            for (top, right, bottom, left), face_encoding in zip(face_locations, face_encodings):
+                # Scale back up face locations since the frame we detected in was scaled to 1/4 size
+                top *= 4
+                right *= 4
+                bottom *= 4
+                left *= 4
+            new_frame = frame
+            if match[0]:
+                if action == 1:
+                    new_frame = blur(frame, target_face_location)
+                elif action == 2:
+                    new_frame = replace(frame, overlay, target_face_location)
+            # Display the resulting image
+            cv.imshow('Video', new_frame)
+
+            # Hit 'q' on the keyboard to quit
+            if cv.waitKey(1) & 0xFF == ord('q'):
+                break
+
+    cv.destroyAllWindows()
+
+def display_image(images_that_match):
+    for image_name in images_that_match:
+        image_path = os.path.join(images_to_search_location, image_name)
+        image = cv.imread(image_path)
+        if image is None:
+            sys.exit("Could not read the image.")
+         # Get the size of the image
+        height, width = image.shape[:2]
+
+        # Define the window size
+        max_height = 800
+        max_width = 600
+
+        # Calculate the ratio of the width and construct the dimensions
+        if height > max_height or width > max_width:
+            scaling_factor = max_height / float(height)
+            if max_width/float(width) < scaling_factor:
+                scaling_factor = max_width / float(width)
+            # Resize the image
+            image = cv.resize(image, None, fx=scaling_factor, fy=scaling_factor, interpolation=cv.INTER_AREA)
+
+        cv.imshow("Display window", image)
+        k = cv.waitKey(0)
+        cv.destroyAllWindows()
+        if k == ord("s"):
+            exit()
+
+# Run the face recognition
+if __name__ == '__main__':
+    main()
+
+
+
+cap = cv.VideoCapture(0)
     if not cap.isOpened():
         print("Cannot open camera")
         exit()
@@ -198,34 +296,3 @@ def video():
     # When everything done, release the capture
     cap.release()
     cv.destroyAllWindows()    
-
-def display_image(images_that_match):
-    for image_name in images_that_match:
-        image_path = os.path.join(images_to_search_location, image_name)
-        image = cv.imread(image_path)
-        if image is None:
-            sys.exit("Could not read the image.")
-         # Get the size of the image
-        height, width = image.shape[:2]
-
-        # Define the window size
-        max_height = 800
-        max_width = 600
-
-        # Calculate the ratio of the width and construct the dimensions
-        if height > max_height or width > max_width:
-            scaling_factor = max_height / float(height)
-            if max_width/float(width) < scaling_factor:
-                scaling_factor = max_width / float(width)
-            # Resize the image
-            image = cv.resize(image, None, fx=scaling_factor, fy=scaling_factor, interpolation=cv.INTER_AREA)
-
-        cv.imshow("Display window", image)
-        k = cv.waitKey(0)
-        cv.destroyAllWindows()
-        if k == ord("s"):
-            exit()
-
-# Run the face recognition
-if __name__ == '__main__':
-    main()
