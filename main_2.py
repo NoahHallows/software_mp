@@ -2,6 +2,8 @@ import face_recognition
 import os
 import cv2 as cv
 import sys
+import multiprocessing
+from multiprocessing import Pool
 
 
 face_to_search_for_location = "/home/noah/Documents/software_mp/test data/img2.jpg"
@@ -20,7 +22,9 @@ face_to_search_for_encoding = face_recognition.face_encodings(face_to_search_for
 
 #load overlay image
 overlay_location = "/home/noah/Documents/software_mp/Laughing_man.png"
-
+#if selected access the overlay image
+if action == 2:
+    overlay = cv.imread(overlay_location)
 
 
 # Lists to store the results
@@ -78,57 +82,65 @@ def replace(background, overlay, target_face_location):
 
 
 
-def face_recog():
+def main():
     # Get list of all files in the directory specified
     images_to_search = os.listdir(images_to_search_location)
-    if action == 2:
-        overlay = cv.imread(overlay_location)
 
-    for image_name in images_to_search:
-        current_image_to_search_location = os.path.join(images_to_search_location, image_name)
+    with Pool(processes=multiprocessing.cpu_count()) as pool:
+        # Map the image processing function over the images
+        results = pool.map(face_recog, images_to_search)
+    print(f"Done with images search. {len(results)} matches found.")
+    # Optionally display matched images
+    display = input("Do you want to view the images that match? (y/n): ")
+    if display.lower() == "y":
+        display_image(results)
+    
         
-        try:
-            # Load and run face recognition on the image to search
-            image = face_recognition.load_image_file(current_image_to_search_location)
-            image_encodings = face_recognition.face_encodings(image)
+
+def face_recog(image_name):
+    current_image_to_search_location = os.path.join(images_to_search_location, image_name)
+    try:
+        # Load and run face recognition on the image to search
+        image = face_recognition.load_image_file(current_image_to_search_location)
+        image_encodings = face_recognition.face_encodings(image)
             
-            if image_encodings:
-                image_encoding = image_encodings[0]
-                # Compare faces
-                results = face_recognition.compare_faces([face_to_search_for_encoding], image_encoding)
+        if image_encodings:
+            image_encoding = image_encodings[0]
+            # Compare faces
+            results = face_recognition.compare_faces([face_to_search_for_encoding], image_encoding)
                 
-                # Convert image to BGR for OpenCV
-                image_bgr = cv.cvtColor(image, cv.COLOR_RGB2BGR)
+            # Convert image to BGR for OpenCV
+            image_bgr = cv.cvtColor(image, cv.COLOR_RGB2BGR)
                 
-                if results[0]:
-                    print(f"Image {image_name} matches")
-                    images_that_match.append(image_name)
-                    # Get location of faces in image
-                    target_face_locations = face_recognition.face_locations(image)
-                    for target_face_location in target_face_locations:
-                        # See if the face is a match for the known face
-                        target_face_encoding = face_recognition.face_encodings(image, [target_face_location])[0]
-                        match = face_recognition.compare_faces([face_to_search_for_encoding], target_face_encoding)
-                        # If it's a match, blur the face
-                        if match[0]:
-                            if action == 1:
-                                new_image = blur(image_bgr, target_face_location)
-                            elif action == 2:
-                                new_image = replace(image_bgr, overlay, target_face_location)
-                            cv.imwrite(current_image_to_search_location, new_image)
+            if results[0]:
+                print(f"Image {image_name} matches")
+                # Get location of faces in image
+                target_face_locations = face_recognition.face_locations(image)
+                for target_face_location in target_face_locations:
+                    # See if the face is a match for the known face
+                    target_face_encoding = face_recognition.face_encodings(image, [target_face_location])[0]
+                    match = face_recognition.compare_faces([face_to_search_for_encoding], target_face_encoding)
+                    # If it's a match, blur the face
+                    if match[0]:
+                        if action == 1:
+                            new_image = blur(image_bgr, target_face_location)
+                        elif action == 2:
+                            new_image = replace(image_bgr, overlay, target_face_location)
+                        cv.imwrite(current_image_to_search_location, new_image)
+                return image_name
 
-                else:
-                    print(f"Image {image_name} doesn't match")
-                    images_that_do_not_match.append(image_name)
             else:
-                print(f"No faces found in image {image_name}")
+                print(f"Image {image_name} doesn't match")
+                return 0
+        else:
+            print(f"No faces found in image {image_name}")
 
-        except Exception as e:
-            print(f"An error occurred with image {image_name}: {e}")
+    except Exception as e:
+        print(f"An error occurred with image {image_name}: {e}")
 
-    print(f"Done with images search. {len(images_that_match)} matches found.")
+    
 
-def display_image():
+def display_image(images_that_match):
     for image_name in images_that_match:
         image_path = os.path.join(images_to_search_location, image_name)
         image = cv.imread(image_path)
@@ -156,9 +168,6 @@ def display_image():
             exit()
 
 # Run the face recognition
-face_recog()
+if __name__ == '__main__':
+    main()
 
-# Optionally display matched images
-display = input("Do you want to view the images that match? (y/n): ")
-if display.lower() == "y":
-    display_image()
