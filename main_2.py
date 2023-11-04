@@ -86,19 +86,23 @@ def replace(background, overlay, target_face_location):
 
 
 def main():
-    # Get list of all files in the directory specified
-    images_to_search = os.listdir(images_to_search_location)
+    live = input("Do you want to run this on a live video? (y/n)")
+    if live.lower() == 'n':
+        # Get list of all files in the directory specified
+        images_to_search = os.listdir(images_to_search_location)
 
-    with Pool(processes=multiprocessing.cpu_count()) as pool:
-        # Map the image processing function over the images
-        results = pool.map(face_recog, images_to_search)
-    results = [item for item in results if item is not None]
-    print(f"Done with images search. {len(results)} matches found.")
-    # Optionally display matched images
-    print(results)
-    display = input("Do you want to view the images that match? (y/n): ")
-    if display.lower() == "y":
-        display_image(results)
+        with Pool(processes=multiprocessing.cpu_count()) as pool:
+            # Map the image processing function over the images
+            results = pool.map(face_recog, images_to_search)
+        results = [item for item in results if item is not None]
+        print(f"Done with images search. {len(results)} matches found.")
+        # Optionally display matched images
+        print(results)
+        display = input("Do you want to view the images that match? (y/n): ")
+        if display.lower() == "y":
+            display_image(results)
+    elif live.lower() == 'y':
+        video()
     
         
 
@@ -155,9 +159,40 @@ def video():
             print("Can't receive frame (stream end?). Exiting ...")
             break
         # Our operations on the frame come here
-        gray = cv.cvtColor(frame, cv.COLOR_BGR2GRAY)
+        try:
+            new_frame = frame
+            # Load and run face recognition on the image to search
+            frame_encodings = face_recognition.face_encodings(frame)
+            #print('1')
+            if frame_encodings:
+                #image_encoding = frame_encodings[0]
+                # Compare faces
+                #results = face_recognition.compare_faces([face_to_search_for_encoding], image_encoding)
+                #print("2")
+                if results[0]:
+                    #print('match')
+                    # Get location of faces in image
+                    target_face_locations = face_recognition.face_locations(frame)
+                    for target_face_location in target_face_locations:
+                        # See if the face is a match for the known face
+                        target_face_encoding = face_recognition.face_encodings(frame, [target_face_location])[0]
+                        match = face_recognition.compare_faces([face_to_search_for_encoding], target_face_encoding)
+                        # If it's a match, blur the face
+                        new_frame = frame
+                        if match[0]:
+                            if action == 1:
+                                new_frame = blur(frame, target_face_location)
+                            elif action == 2:
+                                new_frame = replace(frame, overlay, target_face_location)
+                else:
+                    new_frame = frame
+            else:
+                new_frame = frame
+
+        except Exception as e:
+            print(f"An error occurred with fram: {e}")
         # Display the resulting frame
-        cv.imshow('frame', gray)
+        cv.imshow('frame', new_frame)
         if cv.waitKey(1) == ord('q'):
             break
     # When everything done, release the capture
@@ -194,4 +229,3 @@ def display_image(images_that_match):
 # Run the face recognition
 if __name__ == '__main__':
     main()
-
