@@ -208,6 +208,7 @@ def video():
                     new_frame = frame
             else:
                 n = n + 1
+                new_frame = frame
                 # Step 5: Update tracker
                 success, target_face_location = tracker.update(frame)
 
@@ -215,6 +216,10 @@ def video():
                 if success:
                     (x, y, w, h) = tuple(map(int, target_face_location))
                     cv.rectangle(frame, (x, y), (x+w, y+h), (0, 255, 0), 2)
+                    if action == 1:
+                        new_frame = blur(frame, target_face_location)
+                    elif action == 2:
+                        new_frame = replace(frame, overlay, target_face_location)
 
         except Exception as e:
             print(f"An error occurred with frame: {e}")
