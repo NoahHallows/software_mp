@@ -1,0 +1,42 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Automatic removal of person's face tool</title>
+<link href="style.css" rel="stylesheet" type="text/css">
+<link href="css/bootstrap-4.4.1.css" rel="stylesheet" type="text/css">
+</head>
+
+<body>
+	<h1 align="center">Automatic removal of person's face tool</h1>
+	
+	<form action="/" method="POST"> 
+	<div id="picker">
+		<div style="padding-bottom: 15px"><p>Select image containg face to search for (ensure only one face is in the image)</p><input type="file" id="face_to_search_directory" name="face_to_search_directory"><img src="images/ImgResponsive_Placeholder.png" class="img-fluid" alt="Placeholder image"></div>
+		<p>Select directory containg images to search <br>IMAGES IN THIS DIRECTORY AND SUB DIRECTORIES WILL BE MODIFIED!<br> <input type="file" id="images_directory" name="images_directory" webkitdirectory>
+      </p>
+		
+	</div>
+<div style="text-align: center">
+  <p>If an Image is found to contain the searched for face should the program: <br>
+	  <label>
+	    <input type="radio" name="action" value="2" id="RadioGroup1_0">
+	    Replace face with image</label>
+	  <br>
+	  <label>
+	    <input type="radio" name="action" value="1" id="RadioGroup1_1">
+	    Blur face</label>
+	  <br>
+  </p>
+	<p>Depending on the number of images to search this may take a while</p>
+	
+<button type="button" class="btn btn-warning">&nbsp;&nbsp;Start&nbsp;&nbsp;</button>
+</form>
+</div>
+
+
+<script src="script.js"></script>
+</body>
+</html>
