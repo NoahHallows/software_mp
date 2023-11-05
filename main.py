@@ -54,9 +54,15 @@ def replace(background, overlay, target_face_location):
     # Calculate the width and height of the bounding box
     width = right - left
     height = bottom - top
+    #height = abs(height)
 
-    # Resize overlay image to match the bounding box size
-    overlay_resized = cv.resize(overlay, (width, height))
+    # Ensure the width and height are positive before resizing
+    if width > 0 and height > 0:
+        overlay_resized = cv.resize(overlay, (width, height))
+    else:
+        # Handle the invalid size case, e.g., by skipping the resizing or setting a default size
+        print(f"Invalid size for resize operation: width={width}, height={height}")
+        return background 
 
     # Check if overlay image has an alpha channel (transparency)
     if overlay_resized.shape[2] == 4:
@@ -178,7 +184,7 @@ def video():
         # operations on the frame come here
         try:
             if n == 10:
-                print("1")
+                #print("1")
                 n = 0
                 new_frame = frame
                 #small_frame = cv.resize(frame, (0, 0), fx=0.25, fy=0.25)
@@ -200,11 +206,10 @@ def video():
                             top, right, bottom, left = converted_face_location
                             # Convert from (top, right, bottom, left) to (x, y, width, height)
                             x, y, w, h = left, top, right - left, bottom - top
-
-                            # Initialize tracker with the first face coordinates
-                            tracker = cv.TrackerKCF_create()
+                            #print(x, y, w, h)
                             # Before initializing the tracker, ensure target_face_location is a tuple
                             if isinstance(target_face_location, tuple) and len(target_face_location) == 4:
+                                tracker = cv.TrackerKCF_create()
                                 tracker.init(frame, (x, y, w, h))
                             else:
                                 # Handle the error or re-initialize target_face_location
@@ -221,35 +226,30 @@ def video():
                 else:
                     new_frame = frame
             else:
-                print("2")
+                #print("2")
                 n = n + 1
                 new_frame = frame
                 if frame is not None:
                     update_result = tracker.update(frame)
                 else:
                     print("Frame is empty.")
-                # Step 5: Update tracker
-                update_result = tracker.update(frame)
                 if isinstance(update_result, tuple) and len(update_result) == 2:
                     success, target_face_location = update_result
+                    print(target_face_location)
                     if success:
-                        x, y, w, h = tuple(map(int, target_face_location))
-                        cv.rectangle(frame, (x, y), (x+w, y+h), (0, 255, 0), 2)
+                        top, right, bottom, left = target_face_location
+                        x, y, w, h = left, top, right - left, bottom - top
+                        
+                        #h = abs(h)
+                        #x, y, w, h = tuple(map(int, target_face_location))
+                        print(x, y, w, h)
+                        cv.rectangle(frame, (x, y), (w, h), (0, 255, 0), 2)
+                        if action == 1:
+                            new_frame = blur(frame, target_face_location)
+                        elif action == 2:
+                            new_frame = replace(frame, overlay, target_face_location)
                         print("3")
-                success, target_face_location = tracker.update(frame)
-
-                # Step 6: Draw ROI
-                if success:
-                    (x, y, w, h) = tuple(map(int, target_face_location))
-                    cv.rectangle(frame, (x, y), (x+w, y+h), (0, 255, 0), 2)
-                    if action == 1:
-                        new_frame = blur(frame, target_face_location)
-                    elif action == 2:
-                        new_frame = replace(frame, overlay, target_face_location)
-                    print("4")
-                else:
-                    # Handle the error or re-initialize the tracker
-                    print("Tracker update did not return expected values")
+        
 
         except Exception as e:
             print(f"An error occurred with frame: {e}")
