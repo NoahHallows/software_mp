@@ -157,6 +157,7 @@ def face_recog(image_name):
 
 def video():
     cap = cv.VideoCapture(0)
+    tracker = None
     try:
         # Load the image containing the face you want to look for
         face_to_search_for = face_recognition.load_image_file(face_to_search_for_location)
@@ -193,8 +194,14 @@ def video():
                             # See if the face is a match for the known face
                             target_face_encoding = face_recognition.face_encodings(small_frame, [target_face_location])[0]
                             match = face_recognition.compare_faces([face_to_search_for_encoding], target_face_encoding)
+                            # Take the first face found (assuming one face per frame)
+                            top, right, bottom, left = target_face_location[0]
+                            # Convert from (top, right, bottom, left) to (x, y, width, height)
+                            x, y, w, h = left, top, right - left, bottom - top
+
+                            # Initialize tracker with the first face coordinates
                             tracker = cv.TrackerKCF_create()
-                            tracker.init(frame, target_face_location)
+                            tracker.init(frame, (x, y, w, h))
                             # If it's a match, blur the face
                             new_frame = frame
                             if match[0]:
