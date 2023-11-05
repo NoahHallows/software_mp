@@ -176,9 +176,9 @@ def video():
             print("Can't receive frame (stream end?). Exiting ...")
             break
         # operations on the frame come here
-        #try:
-        if True:
-            if True:
+        try:
+            if n == 10:
+                print("1")
                 n = 0
                 new_frame = frame
                 #small_frame = cv.resize(frame, (0, 0), fx=0.25, fy=0.25)
@@ -221,6 +221,7 @@ def video():
                 else:
                     new_frame = frame
             else:
+                print("2")
                 n = n + 1
                 new_frame = frame
                 if frame is not None:
@@ -234,6 +235,7 @@ def video():
                     if success:
                         x, y, w, h = tuple(map(int, target_face_location))
                         cv.rectangle(frame, (x, y), (x+w, y+h), (0, 255, 0), 2)
+                        print("3")
                 success, target_face_location = tracker.update(frame)
 
                 # Step 6: Draw ROI
@@ -244,12 +246,13 @@ def video():
                         new_frame = blur(frame, target_face_location)
                     elif action == 2:
                         new_frame = replace(frame, overlay, target_face_location)
+                    print("4")
                 else:
                     # Handle the error or re-initialize the tracker
                     print("Tracker update did not return expected values")
 
-        #except Exception as e:
-        #    print(f"An error occurred with frame: {e}")
+        except Exception as e:
+            print(f"An error occurred with frame: {e}")
             # Display the resulting frame
         cv.imshow('frame', new_frame)
         if cv.waitKey(1) == ord('q'):
