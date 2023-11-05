@@ -202,13 +202,13 @@ def video():
                             x, y, w, h = left, top, right - left, bottom - top
 
                             # Initialize tracker with the first face coordinates
+                            tracker = cv.TrackerKCF_create()
                             # Before initializing the tracker, ensure target_face_location is a tuple
                             if isinstance(target_face_location, tuple) and len(target_face_location) == 4:
                                 tracker.init(frame, (x, y, w, h))
                             else:
                                 # Handle the error or re-initialize target_face_location
                                 print("target_face_location is not a tuple with four elements")
-                            tracker = cv.TrackerKCF_create()
                             # If it's a match, blur the face
                             new_frame = frame
                             if match[0]:
