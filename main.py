@@ -47,10 +47,10 @@ def replace(background, overlay, target_face_location):
     top, right, bottom, left = target_face_location
     scale_factor = 0.25
     # Scale face_location coordinates up to the original image size
-    top = int(top / scale_factor)
-    right = int(right / scale_factor)
-    bottom = int(bottom / scale_factor)
-    left = int(left / scale_factor)
+    #top = int(top / scale_factor)
+    #right = int(right / scale_factor)
+    #bottom = int(bottom / scale_factor)
+    #left = int(left / scale_factor)
     # Calculate the width and height of the bounding box
     width = right - left
     height = bottom - top
@@ -157,7 +157,7 @@ def face_recog(image_name):
 
 def video():
     cap = cv.VideoCapture(0)
-    tracker = None
+    tracker = cv.TrackerKCF_create()
     try:
         # Load the image containing the face you want to look for
         face_to_search_for = face_recognition.load_image_file(face_to_search_for_location)
@@ -175,12 +175,14 @@ def video():
         if not ret:
             print("Can't receive frame (stream end?). Exiting ...")
             break
-        # Our operations on the frame come here
-        try:
-            if n == 15:
+        # operations on the frame come here
+        #try:
+        if True:
+            if True:
                 n = 0
                 new_frame = frame
-                small_frame = cv.resize(frame, (0, 0), fx=0.25, fy=0.25)
+                #small_frame = cv.resize(frame, (0, 0), fx=0.25, fy=0.25)
+                small_frame = frame
                 # Load and run face recognition on the image to search
                 frame_encodings = face_recognition.face_encodings(small_frame)
                 if frame_encodings:
@@ -194,14 +196,19 @@ def video():
                             # See if the face is a match for the known face
                             target_face_encoding = face_recognition.face_encodings(small_frame, [target_face_location])[0]
                             match = face_recognition.compare_faces([face_to_search_for_encoding], target_face_encoding)
-                            # Take the first face found (assuming one face per frame)
-                            top, right, bottom, left = target_face_location[0]
+                            converted_face_location = target_face_location
+                            top, right, bottom, left = converted_face_location
                             # Convert from (top, right, bottom, left) to (x, y, width, height)
                             x, y, w, h = left, top, right - left, bottom - top
 
                             # Initialize tracker with the first face coordinates
+                            # Before initializing the tracker, ensure target_face_location is a tuple
+                            if isinstance(target_face_location, tuple) and len(target_face_location) == 4:
+                                tracker.init(frame, (x, y, w, h))
+                            else:
+                                # Handle the error or re-initialize target_face_location
+                                print("target_face_location is not a tuple with four elements")
                             tracker = cv.TrackerKCF_create()
-                            tracker.init(frame, (x, y, w, h))
                             # If it's a match, blur the face
                             new_frame = frame
                             if match[0]:
@@ -216,7 +223,17 @@ def video():
             else:
                 n = n + 1
                 new_frame = frame
+                if frame is not None:
+                    update_result = tracker.update(frame)
+                else:
+                    print("Frame is empty.")
                 # Step 5: Update tracker
+                update_result = tracker.update(frame)
+                if isinstance(update_result, tuple) and len(update_result) == 2:
+                    success, target_face_location = update_result
+                    if success:
+                        x, y, w, h = tuple(map(int, target_face_location))
+                        cv.rectangle(frame, (x, y), (x+w, y+h), (0, 255, 0), 2)
                 success, target_face_location = tracker.update(frame)
 
                 # Step 6: Draw ROI
@@ -227,9 +244,12 @@ def video():
                         new_frame = blur(frame, target_face_location)
                     elif action == 2:
                         new_frame = replace(frame, overlay, target_face_location)
+                else:
+                    # Handle the error or re-initialize the tracker
+                    print("Tracker update did not return expected values")
 
-        except Exception as e:
-            print(f"An error occurred with frame: {e}")
+        #except Exception as e:
+        #    print(f"An error occurred with frame: {e}")
             # Display the resulting frame
         cv.imshow('frame', new_frame)
         if cv.waitKey(1) == ord('q'):
