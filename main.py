@@ -9,25 +9,13 @@ from multiprocessing import Pool
 face_to_search_for_location = "/home/noah/Documents/software_mp/test data/img1.jpg"
 images_to_search_location = "/home/noah/Documents/software_mp/test data/"
 
-#ask user what they want to do to matching images
-action = input("what do you want to do to matching images? 1: blur, 2 replace face: ")
-try:
-    action = int(action)
-except:
-    print("enter a valid number")
-    exit()
-try:
-    # Load the image containing the face you want to look for
-    face_to_search_for = face_recognition.load_image_file(face_to_search_for_location)
-    face_to_search_for_encoding = face_recognition.face_encodings(face_to_search_for)[0]
-except:
-    print("Error accessing images containg face to search for, please try again")
+#declare the action variable
+action = ''
+
 
 #load overlay image
 overlay_location = "/home/noah/Documents/software_mp/Laughing_man.png"
-#if selected access the overlay image
-if action == 2:
-    overlay = cv.imread(overlay_location)
+
 
 
 # Lists to store the results
@@ -84,8 +72,24 @@ def replace(background, overlay, target_face_location):
 
 
 
-def main():
-    live = input("Do you want to run this on a live video? (y/n)")
+def __init__():
+    global overlay, face_to_search_for, face_to_search_for_encoding, action
+    action = input("what do you want to do to matching images? 1: blur, 2 replace face: ")
+    try:
+        action = int(action)
+    except:
+        print("enter a valid number")
+        exit()
+    try:
+        # Load the image containing the face you want to look for
+        face_to_search_for = face_recognition.load_image_file(face_to_search_for_location)
+        face_to_search_for_encoding = face_recognition.face_encodings(face_to_search_for)[0]
+    except:
+        print("Error accessing images containg face to search for, please try again")
+    #if selected access the overlay image
+    if action == 2:
+        overlay = cv.imread(overlay_location)
+    live = live = input("Do you want to run the program on live video (y/n)(if no then will run of saved images): ")
     if live.lower() == 'n':
         # Get list of all files in the directory specified
         images_to_search = os.listdir(images_to_search_location)
@@ -147,6 +151,12 @@ def face_recog(image_name):
 
 def video():
     cap = cv.VideoCapture(0)
+    try:
+        # Load the image containing the face you want to look for
+        face_to_search_for = face_recognition.load_image_file(face_to_search_for_location)
+        face_to_search_for_encoding = face_recognition.face_encodings(face_to_search_for)[0]
+    except:
+        print("Error accessing images containg face to search for, please try again")
     if not cap.isOpened():
         print("Cannot open camera")
         exit()
@@ -227,4 +237,4 @@ def display_image(images_that_match):
 
 # Run the face recognition
 if __name__ == '__main__':
-    main()
+    __init__()
