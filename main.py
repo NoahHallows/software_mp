@@ -45,6 +45,12 @@ def blur(image_bgr, target_face_location):
 def replace(background, overlay, target_face_location):
     # Unpack the location
     top, right, bottom, left = target_face_location
+    scale_factor = 0.25
+    # Scale face_location coordinates up to the original image size
+    top = int(top / scale_factor)
+    right = int(right / scale_factor)
+    bottom = int(bottom / scale_factor)
+    left = int(left / scale_factor)
     # Calculate the width and height of the bounding box
     width = right - left
     height = bottom - top
@@ -160,6 +166,7 @@ def video():
     if not cap.isOpened():
         print("Cannot open camera")
         exit()
+    n = 0
     while True:
         # Capture frame-by-frame
         ret, frame = cap.read()
@@ -169,38 +176,49 @@ def video():
             break
         # Our operations on the frame come here
         try:
-            new_frame = frame
-            # Load and run face recognition on the image to search
-            frame_encodings = face_recognition.face_encodings(frame)
-            #print('1')
-            if frame_encodings:
-                image_encoding = frame_encodings[0]
-                # Compare faces
-                results = face_recognition.compare_faces([face_to_search_for_encoding], image_encoding)
-                #print("2")
-                if results[0]:
-                    #print('match')
-                    # Get location of faces in image
-                    target_face_locations = face_recognition.face_locations(frame)
-                    for target_face_location in target_face_locations:
-                        # See if the face is a match for the known face
-                        target_face_encoding = face_recognition.face_encodings(frame, [target_face_location])[0]
-                        match = face_recognition.compare_faces([face_to_search_for_encoding], target_face_encoding)
-                        # If it's a match, blur the face
+            if n == 15:
+                n = 0
+                new_frame = frame
+                small_frame = cv.resize(frame, (0, 0), fx=0.25, fy=0.25)
+                # Load and run face recognition on the image to search
+                frame_encodings = face_recognition.face_encodings(small_frame)
+                if frame_encodings:
+                    image_encoding = frame_encodings[0]
+                    # Compare faces
+                    results = face_recognition.compare_faces([face_to_search_for_encoding], image_encoding)
+                    if results[0]:
+                        # Get location of faces in image
+                        target_face_locations = face_recognition.face_locations(small_frame)
+                        for target_face_location in target_face_locations:
+                            # See if the face is a match for the known face
+                            target_face_encoding = face_recognition.face_encodings(small_frame, [target_face_location])[0]
+                            match = face_recognition.compare_faces([face_to_search_for_encoding], target_face_encoding)
+                            tracker = cv.TrackerKCF_create()
+                            tracker.init(frame, target_face_location)
+                            # If it's a match, blur the face
+                            new_frame = frame
+                            if match[0]:
+                                if action == 1:
+                                    new_frame = blur(frame, target_face_location)
+                                elif action == 2:
+                                    new_frame = replace(frame, overlay, target_face_location)
+                    else:
                         new_frame = frame
-                        if match[0]:
-                            if action == 1:
-                                new_frame = blur(frame, target_face_location)
-                            elif action == 2:
-                                new_frame = replace(frame, overlay, target_face_location)
                 else:
                     new_frame = frame
             else:
-                new_frame = frame
+                n = n + 1
+                # Step 5: Update tracker
+                success, target_face_location = tracker.update(frame)
+
+                # Step 6: Draw ROI
+                if success:
+                    (x, y, w, h) = tuple(map(int, target_face_location))
+                    cv.rectangle(frame, (x, y), (x+w, y+h), (0, 255, 0), 2)
 
         except Exception as e:
             print(f"An error occurred with frame: {e}")
-        # Display the resulting frame
+            # Display the resulting frame
         cv.imshow('frame', new_frame)
         if cv.waitKey(1) == ord('q'):
             break
