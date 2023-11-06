@@ -278,6 +278,8 @@ def video():
         except Exception as e:
             print(f"An error occurred with frame: {e}")
             # Display the resulting frame
+        cv.namedWindow('frame', cv.WINDOW_NORMAL)
+        cv.resizeWindow('frame', 1000, 900)
         cv.imshow('frame', new_frame)
         if cv.waitKey(1) == ord('q'):
             break
