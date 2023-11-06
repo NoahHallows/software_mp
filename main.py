@@ -23,7 +23,7 @@ overlay_location = "/home/noah/Documents/software_mp/Laughing_man.png"
 images_that_match = []
 images_that_do_not_match = []
 
-scale_factor = 0.25
+scale_factor = 0.35
 
 def blur(image_bgr, target_face_location, used_kcf):
     # Unpack the location
@@ -197,7 +197,7 @@ def video():
     if not cap.isOpened():
         print("Cannot open camera")
         exit()
-    n = 10
+    n = 5
     detected_face = False
     while True:
         # Capture frame-by-frame
@@ -208,7 +208,7 @@ def video():
             break
         # operations on the frame come here
         try:
-            if n == 10:
+            if n == 5:
                 used_kcf = False
                 n = 0
                 new_frame = frame
@@ -252,6 +252,22 @@ def video():
                                     new_frame = replace(frame, overlay, target_face_location, used_kcf)
                     else:
                         new_frame = frame
+                        used_kcf = True
+                        if detected_face == True:
+                            if frame is not None:
+                                update_result = tracker.update(frame)
+                            else:
+                                print("Frame is empty.")
+                            if isinstance(update_result, tuple) and len(update_result) == 2:
+                                success, target_face_location = update_result
+                                if success:
+                                    top, right, bottom, left = target_face_location
+                                    x, y, w, h = tuple(map(int, target_face_location))
+                                    #cv.rectangle(frame, target_face_location, (0, 255, 0), 2)
+                                    if action == 1:
+                                        new_frame = blur(frame, target_face_location, used_kcf)
+                                    elif action == 2:
+                                        new_frame = replace(frame, overlay, target_face_location, used_kcf)
                 else:
                     new_frame = frame
             else:
