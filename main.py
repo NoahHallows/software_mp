@@ -25,9 +25,25 @@ images_that_do_not_match = []
 
 scale_factor = 0.25
 
-def blur(image_bgr, target_face_location):
+def blur(image_bgr, target_face_location, used_kcf):
     # Unpack the location
-    top, right, bottom, left = target_face_location
+    if used_kcf == False:
+        top, right, bottom, left = target_face_location
+        # Scale face_location coordinates up to the original image size
+        top = int(top / scale_factor)
+        right = int(right / scale_factor)
+        bottom = int(bottom / scale_factor)
+        left = int(left / scale_factor)
+        # Calculate the width and height of the bounding box
+        width = right - left
+        height = bottom - top
+    #Because KCF returns (x, y, width, height)
+    elif used_kcf == True:
+        x, y, width, height = target_face_location
+        top = y
+        left = x
+        bottom = y + height
+        right = x + width
     # Increase the region slightly to make sure the entire face is covered
     top = max(top - 10, 0)
     right = min(right + 10, image_bgr.shape[1])
@@ -231,7 +247,7 @@ def video():
                             new_frame = frame
                             if match[0]:
                                 if action == 1:
-                                    new_frame = blur(frame, target_face_location)
+                                    new_frame = blur(frame, target_face_location, used_kcf)
                                 elif action == 2:
                                     new_frame = replace(frame, overlay, target_face_location, used_kcf)
                     else:
@@ -252,9 +268,9 @@ def video():
                         if success:
                             top, right, bottom, left = target_face_location
                             x, y, w, h = tuple(map(int, target_face_location))
-                            cv.rectangle(frame, target_face_location, (0, 255, 0), 2)
+                            #cv.rectangle(frame, target_face_location, (0, 255, 0), 2)
                             if action == 1:
-                                new_frame = blur(frame, target_face_location)
+                                new_frame = blur(frame, target_face_location, used_kcf)
                             elif action == 2:
                                 new_frame = replace(frame, overlay, target_face_location, used_kcf)
         
