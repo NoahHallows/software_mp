@@ -23,6 +23,8 @@ overlay_location = "/home/noah/Documents/software_mp/Laughing_man.png"
 images_that_match = []
 images_that_do_not_match = []
 
+scale_factor = 0.25
+
 def blur(image_bgr, target_face_location):
     # Unpack the location
     top, right, bottom, left = target_face_location
@@ -47,15 +49,15 @@ def replace(background, overlay, target_face_location, used_kcf):
     # Unpack the location
     if used_kcf == False:
         top, right, bottom, left = target_face_location
-        #scale_factor = 0.25
         # Scale face_location coordinates up to the original image size
-        #top = int(top / scale_factor)
-        #right = int(right / scale_factor)
-        #bottom = int(bottom / scale_factor)
-        #left = int(left / scale_factor)
+        top = int(top / scale_factor)
+        right = int(right / scale_factor)
+        bottom = int(bottom / scale_factor)
+        left = int(left / scale_factor)
         # Calculate the width and height of the bounding box
         width = right - left
         height = bottom - top
+    #Because KCF returns (x, y, width, height)
     elif used_kcf == True:
         x, y, width, height = target_face_location
         top = y
@@ -88,48 +90,6 @@ def replace(background, overlay, target_face_location, used_kcf):
         background[top:bottom, left:right] = overlay_resized
 
     return background
-
-def replace_2(background, overlay, target_face_location):
-    # Unpack the location
-    top, right, bottom, left = target_face_location
-    scale_factor = 0.25
-    # Scale face_location coordinates up to the original image size
-    #top = int(top / scale_factor)
-    #right = int(right / scale_factor)
-    #bottom = int(bottom / scale_factor)
-    #left = int(left / scale_factor)
-    # Calculate the width and height of the bounding box
-    width = right - left
-    height = bottom - top
-    print(f"height = {height}, top = {top} Bottom = {bottom}")
-    
-
-    # Ensure the width and height are positive before resizing
-    if width > 0 and height > 0:
-        overlay_resized = cv.resize(overlay, (right-left, bottom-top))
-    else:
-        # Handle the invalid size case, e.g., by skipping the resizing or setting a default size
-        print(f"Invalid size for resize operation: width={width}, height={height}")
-        return background 
-
-    # Check if overlay image has an alpha channel (transparency)
-    if overlay_resized.shape[2] == 4:
-        # Split overlay into color and alpha channels
-        overlay_color = overlay_resized[:, :, :3]
-        alpha_mask = overlay_resized[:, :, 3] / 255.0
-
-        # Get the ROI from the background and blend using the alpha mask
-        roi = background[top:bottom, left:right]
-        roi = cv.addWeighted(overlay_color, alpha_mask, roi, 1 - alpha_mask, 0, roi)
-
-        # Put the blended ROI back into the background
-        background[top:bottom, left:right] = roi
-    else:
-        # If no alpha channel, just replace the ROI with the resized overlay
-        background[top:bottom, left:right] = overlay_resized
-
-    return background
-
 
 
 def __init__():
@@ -221,8 +181,8 @@ def video():
     if not cap.isOpened():
         print("Cannot open camera")
         exit()
-    #sleep(5)
     n = 10
+    detected_face = False
     while True:
         # Capture frame-by-frame
         ret, frame = cap.read()
@@ -233,12 +193,11 @@ def video():
         # operations on the frame come here
         try:
             if n == 10:
-                #print("------------1-------------")
                 used_kcf = False
                 n = 0
                 new_frame = frame
-                #small_frame = cv.resize(frame, (0, 0), fx=0.25, fy=0.25)
-                small_frame = frame
+                small_frame = cv.resize(frame, (0, 0), fx=scale_factor, fy=scale_factor)
+                #small_frame = frame
                 # Load and run face recognition on the image to search
                 frame_encodings = face_recognition.face_encodings(small_frame)
                 if frame_encodings:
@@ -246,6 +205,7 @@ def video():
                     # Compare faces
                     results = face_recognition.compare_faces([face_to_search_for_encoding], image_encoding)
                     if results[0]:
+                        detected_face = True
                         # Get location of faces in image
                         target_face_locations = face_recognition.face_locations(small_frame)
                         for target_face_location in target_face_locations:
@@ -253,11 +213,13 @@ def video():
                             target_face_encoding = face_recognition.face_encodings(small_frame, [target_face_location])[0]
                             match = face_recognition.compare_faces([face_to_search_for_encoding], target_face_encoding)
                             converted_face_location = target_face_location
-                            #print(f"target face location using face_recogniton  = {target_face_location}")
                             top, right, bottom, left = converted_face_location
+                            top = int(top / scale_factor)
+                            right = int(right / scale_factor)
+                            bottom = int(bottom / scale_factor)
+                            left = int(left / scale_factor)
                             # Convert from (top, right, bottom, left) to (x, y, width, height)
                             x, y, w, h = left, top, right - left, bottom - top
-                            #print(x, y, w, h)
                             # Before initializing the tracker, ensure target_face_location is a tuple
                             if isinstance(target_face_location, tuple) and len(target_face_location) == 4:
                                 tracker = cv.TrackerKCF_create()
@@ -277,30 +239,24 @@ def video():
                 else:
                     new_frame = frame
             else:
-                #print("2")
                 n = n + 1
                 new_frame = frame
                 used_kcf = True
-                if frame is not None:
-                    update_result = tracker.update(frame)
-                else:
-                    print("Frame is empty.")
-                if isinstance(update_result, tuple) and len(update_result) == 2:
-                    success, target_face_location = update_result
-                    #print(f"target face location {target_face_location}")
-                    if success:
-                        top, right, bottom, left = target_face_location
-                        #x, y, w, h = left, top, right - left, bottom - top
-                        
-                        #h = abs(h)
-                        x, y, w, h = tuple(map(int, target_face_location))
-                        #print(f"x, y, w, h, {x, y, w, h}")
-                        #cv.rectangle(frame, target_face_location, (0, 255, 0), 2)
-                        if action == 1:
-                            new_frame = blur(frame, target_face_location)
-                        elif action == 2:
-                            new_frame = replace(frame, overlay, target_face_location, used_kcf)
-                        #print("3")
+                if detected_face == True:
+                    if frame is not None:
+                        update_result = tracker.update(frame)
+                    else:
+                        print("Frame is empty.")
+                    if isinstance(update_result, tuple) and len(update_result) == 2:
+                        success, target_face_location = update_result
+                        if success:
+                            top, right, bottom, left = target_face_location
+                            x, y, w, h = tuple(map(int, target_face_location))
+                            cv.rectangle(frame, target_face_location, (0, 255, 0), 2)
+                            if action == 1:
+                                new_frame = blur(frame, target_face_location)
+                            elif action == 2:
+                                new_frame = replace(frame, overlay, target_face_location, used_kcf)
         
 
         except Exception as e:
