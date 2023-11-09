@@ -23,7 +23,7 @@ overlay_location = "/home/noah/Documents/software_mp/Laughing_man.png"
 images_that_match = []
 images_that_do_not_match = []
 
-scale_factor = 0.25
+scale_factor = 0.35
 
 def blur(image_bgr, target_face_location, used_kcf):
     # Unpack the location
@@ -129,6 +129,9 @@ def __init__():
     if live.lower() == 'n':
         # Get list of all files in the directory specified
         images_to_search = os.listdir(images_to_search_location)
+        for image_location in images_to_search:
+            is_dir = os.path.isdir(image_location)
+            #if is_dir == 
 
         with Pool(processes=multiprocessing.cpu_count()) as pool:
             # Map the image processing function over the images
@@ -187,7 +190,7 @@ def face_recog(image_name):
 
 def video():
     cap = cv.VideoCapture(0)
-    tracker = cv.TrackerKCF_create()
+    tracker = cv.TrackerCSRT_create()
     try:
         # Load the image containing the face you want to look for
         face_to_search_for = face_recognition.load_image_file(face_to_search_for_location)
@@ -197,7 +200,7 @@ def video():
     if not cap.isOpened():
         print("Cannot open camera")
         exit()
-    n = 10
+    n = 5
     detected_face = False
     while True:
         # Capture frame-by-frame
@@ -208,7 +211,7 @@ def video():
             break
         # operations on the frame come here
         try:
-            if n == 10:
+            if n == 5:
                 used_kcf = False
                 n = 0
                 new_frame = frame
@@ -238,7 +241,7 @@ def video():
                             x, y, w, h = left, top, right - left, bottom - top
                             # Before initializing the tracker, ensure target_face_location is a tuple
                             if isinstance(target_face_location, tuple) and len(target_face_location) == 4:
-                                tracker = cv.TrackerKCF_create()
+                                tracker = cv.TrackerCSRT_create()
                                 tracker.init(frame, (x, y, w, h))
                             else:
                                 # Handle the error or re-initialize target_face_location
@@ -252,6 +255,22 @@ def video():
                                     new_frame = replace(frame, overlay, target_face_location, used_kcf)
                     else:
                         new_frame = frame
+                        used_kcf = True
+                        if detected_face == True:
+                            if frame is not None:
+                                update_result = tracker.update(frame)
+                            else:
+                                print("Frame is empty.")
+                            if isinstance(update_result, tuple) and len(update_result) == 2:
+                                success, target_face_location = update_result
+                                if success:
+                                    top, right, bottom, left = target_face_location
+                                    x, y, w, h = tuple(map(int, target_face_location))
+                                    #cv.rectangle(frame, target_face_location, (0, 255, 0), 2)
+                                    if action == 1:
+                                        new_frame = blur(frame, target_face_location, used_kcf)
+                                    elif action == 2:
+                                        new_frame = replace(frame, overlay, target_face_location, used_kcf)
                 else:
                     new_frame = frame
             else:
@@ -278,6 +297,8 @@ def video():
         except Exception as e:
             print(f"An error occurred with frame: {e}")
             # Display the resulting frame
+        cv.namedWindow('frame', cv.WINDOW_NORMAL)
+        cv.resizeWindow('frame', 1000, 900)
         cv.imshow('frame', new_frame)
         if cv.waitKey(1) == ord('q'):
             break
