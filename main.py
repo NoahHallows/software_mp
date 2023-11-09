@@ -129,6 +129,9 @@ def __init__():
     if live.lower() == 'n':
         # Get list of all files in the directory specified
         images_to_search = os.listdir(images_to_search_location)
+        for image_location in images_to_search:
+            is_dir = os.path.isdir(image_location)
+            #if is_dir == 
 
         with Pool(processes=multiprocessing.cpu_count()) as pool:
             # Map the image processing function over the images
@@ -187,7 +190,7 @@ def face_recog(image_name):
 
 def video():
     cap = cv.VideoCapture(0)
-    tracker = cv.TrackerKCF_create()
+    tracker = cv.TrackerCSRT_create()
     try:
         # Load the image containing the face you want to look for
         face_to_search_for = face_recognition.load_image_file(face_to_search_for_location)
@@ -238,7 +241,7 @@ def video():
                             x, y, w, h = left, top, right - left, bottom - top
                             # Before initializing the tracker, ensure target_face_location is a tuple
                             if isinstance(target_face_location, tuple) and len(target_face_location) == 4:
-                                tracker = cv.TrackerKCF_create()
+                                tracker = cv.TrackerCSRT_create()
                                 tracker.init(frame, (x, y, w, h))
                             else:
                                 # Handle the error or re-initialize target_face_location
