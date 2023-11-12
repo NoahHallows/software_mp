@@ -7,17 +7,20 @@ from multiprocessing import Pool
 from time import sleep
 
 
-face_to_search_for_location = "/home/noah/Documents/software_mp/test data/img1.jpg"
+face_to_search_for_location = "/home/noah/Documents/software_mp/test data/john1.png"
 images_to_search_location = "/home/noah/Documents/software_mp/test data/"
 
 #declare the action variable
 action = ''
 
+video_file_location = '/home/noah/Videos/Last.Week.Tonight.with.John.Oliver.S10E15.720p.WEB.h264-EDITH.mkv'
 
 #load overlay image
 overlay_location = "/home/noah/Documents/software_mp/Laughing_man.png"
 
-
+# Define the codec and create VideoWriter object
+fourcc = cv.VideoWriter_fourcc(*'XVID')
+out = cv.VideoWriter('output.avi', fourcc, 20.0, (640,  480))
 
 # Lists to store the results
 images_that_match = []
@@ -25,7 +28,7 @@ images_that_do_not_match = []
 
 scale_factor = 0.35
 
-def blur(image_bgr, target_face_location, used_kcf):
+def blur(image_bgr, target_face_location, used_kcf, scale_factor):
     # Unpack the location
     if used_kcf == False:
         top, right, bottom, left = target_face_location
@@ -61,7 +64,7 @@ def blur(image_bgr, target_face_location, used_kcf):
 
     return image_bgr
 
-def replace(background, overlay, target_face_location, used_kcf):
+def replace(background, overlay, target_face_location, used_kcf, scale_factor):
     # Unpack the location
     if used_kcf == False:
         top, right, bottom, left = target_face_location
@@ -122,11 +125,19 @@ def __init__():
         face_to_search_for_encoding = face_recognition.face_encodings(face_to_search_for)[0]
     except:
         print("Error accessing images containg face to search for, please try again")
+    video = int(input("Do you want to run the program on video or photos (1 = video, 2 = photos): "))
+    print(video)
+    if int(video) == 1:
+        live = live = input("Do you want to run the program on live video (y/n): ")
+        if live.lower() == 'n':
+            print("3")
+            video_pre_recorded()
+        else:
+            video_live()
     #if selected access the overlay image
-    if action == 2:
-        overlay = cv.imread(overlay_location)
-    live = live = input("Do you want to run the program on live video (y/n)(if no then will run of saved images): ")
-    if live.lower() == 'n':
+    overlay = cv.imread(overlay_location)
+    
+    if video == 2:
         # Get list of all files in the directory specified
         images_to_search = os.listdir(images_to_search_location)
         for image_location in images_to_search:
@@ -143,8 +154,6 @@ def __init__():
         display = input("Do you want to view the images that match? (y/n): ")
         if display.lower() == "y":
             display_image(results)
-    elif live.lower() == 'y':
-        video()
     
         
 
@@ -188,7 +197,7 @@ def face_recog(image_name):
     except Exception as e:
         print(f"An error occurred with image {image_name}: {e}")
 
-def video():
+def video_live():
     cap = cv.VideoCapture(0)
     tracker = cv.TrackerCSRT_create()
     try:
@@ -216,7 +225,6 @@ def video():
                 n = 0
                 new_frame = frame
                 small_frame = cv.resize(frame, (0, 0), fx=scale_factor, fy=scale_factor)
-                #small_frame = frame
                 # Load and run face recognition on the image to search
                 frame_encodings = face_recognition.face_encodings(small_frame)
                 if frame_encodings:
@@ -250,9 +258,9 @@ def video():
                             new_frame = frame
                             if match[0]:
                                 if action == 1:
-                                    new_frame = blur(frame, target_face_location, used_kcf)
+                                    new_frame = blur(frame, target_face_location, used_kcf, scale_factor)
                                 elif action == 2:
-                                    new_frame = replace(frame, overlay, target_face_location, used_kcf)
+                                    new_frame = replace(frame, overlay, target_face_location, scale_factor)
                     else:
                         new_frame = frame
                         used_kcf = True
@@ -268,9 +276,9 @@ def video():
                                     x, y, w, h = tuple(map(int, target_face_location))
                                     #cv.rectangle(frame, target_face_location, (0, 255, 0), 2)
                                     if action == 1:
-                                        new_frame = blur(frame, target_face_location, used_kcf)
+                                        new_frame = blur(frame, target_face_location, used_kcf, 1)
                                     elif action == 2:
-                                        new_frame = replace(frame, overlay, target_face_location, used_kcf)
+                                        new_frame = replace(frame, overlay, target_face_location, used_kcf, 1)
                 else:
                     new_frame = frame
             else:
@@ -304,7 +312,67 @@ def video():
             break
     # When everything done, release the capture
     cap.release()
-    cv.destroyAllWindows()    
+    cv.destroyAllWindows() 
+
+def video_pre_recorded():
+    cap = cv.VideoCapture(video_file_location)
+    try:
+        # Load the image containing the face you want to look for
+        face_to_search_for = face_recognition.load_image_file(face_to_search_for_location)
+        face_to_search_for_encoding = face_recognition.face_encodings(face_to_search_for)[0]
+    except:
+        print("Error accessing images containg face to search for, please try again")
+    if not cap.isOpened():
+        print("Cannot open file")
+        exit()
+    while True:
+        # Capture frame-by-frame
+        ret, frame = cap.read()
+        # if frame is read correctly ret is True
+        if not ret:
+            print("Can't receive frame (stream end?). Exiting ...")
+            break
+        # operations on the frame come here
+        try:
+            used_kcf = False
+            new_frame = frame
+            # Load and run face recognition on the image to search
+            frame_encodings = face_recognition.face_encodings(frame)
+            if frame_encodings:
+                image_encoding = frame_encodings[0]
+                # Compare faces
+                results = face_recognition.compare_faces([face_to_search_for_encoding], image_encoding)
+                if results[0]:
+                    # Get location of faces in image
+                    target_face_locations = face_recognition.face_locations(frame)
+                    for target_face_location in target_face_locations:
+                        # See if the face is a match for the known face
+                        target_face_encoding = face_recognition.face_encodings(frame, [target_face_location])[0]
+                        match = face_recognition.compare_faces([face_to_search_for_encoding], target_face_encoding)                        
+                        if match[0]:
+                            if action == 1:
+                                new_frame = blur(frame, target_face_location, used_kcf, 1)
+                            elif action == 2:
+                                new_frame = replace(frame, overlay, target_face_location, used_kcf, 1)
+                else:
+                    new_frame = frame
+            else:
+                new_frame = frame
+        
+
+        except Exception as e:
+            print(f"An error occurred with frame: {e}")
+        #write the resulting frame
+        out.write(frame)
+        # Display the resulting frame
+        cv.namedWindow('frame', cv.WINDOW_NORMAL)
+        cv.resizeWindow('frame', 1000, 900)
+        cv.imshow('frame', new_frame)
+        if cv.waitKey(1) == ord('q'):
+            break
+    # When everything done, release the capture
+    cap.release()
+    cv.destroyAllWindows()       
 
 def display_image(images_that_match):
     for image_name in images_that_match:
