@@ -84,6 +84,14 @@ def replace(background, overlay, target_face_location, used_kcf, scale_factor):
         bottom = y + height
         right = x + width
 
+    # Expand the bounding box by the constant value
+    top = max(0, top - 10)
+    bottom = min(background.shape[0], bottom + 10)
+    left = max(0, left - 10)
+    right = min(background.shape[1], right + 10)
+    width = width + 20
+    height = height + 20
+
     # Ensure the width and height are positive before resizing
     if width > 0 and height > 0:
         overlay_resized = cv.resize(overlay, (width, height))
@@ -123,19 +131,18 @@ def __init__():
         # Load the image containing the face you want to look for
         face_to_search_for = face_recognition.load_image_file(face_to_search_for_location)
         face_to_search_for_encoding = face_recognition.face_encodings(face_to_search_for)[0]
+        if action == 2:
+            #if selected access the overlay image
+            overlay = cv.imread(overlay_location)
     except:
         print("Error accessing images containg face to search for, please try again")
     video = int(input("Do you want to run the program on video or photos (1 = video, 2 = photos): "))
-    print(video)
     if int(video) == 1:
         live = live = input("Do you want to run the program on live video (y/n): ")
         if live.lower() == 'n':
-            print("3")
             video_pre_recorded()
         else:
             video_live()
-    #if selected access the overlay image
-    overlay = cv.imread(overlay_location)
     
     if video == 2:
         # Get list of all files in the directory specified
@@ -183,9 +190,9 @@ def face_recog(image_name):
                     # If it's a match, blur the face
                     if match[0]:
                         if action == 1:
-                            new_image = blur(image_bgr, target_face_location)
+                            new_image = blur(image_bgr, target_face_location, 1)
                         elif action == 2:
-                            new_image = replace(image_bgr, overlay, target_face_location)
+                            new_image = replace(image_bgr, overlay, target_face_location, 1)
                         cv.imwrite(current_image_to_search_location, new_image)
                 return image_name
 
@@ -198,7 +205,7 @@ def face_recog(image_name):
         print(f"An error occurred with image {image_name}: {e}")
 
 def video_live():
-    cap = cv.VideoCapture(0)
+    cap = cv.VideoCapture(video_file_location)
     tracker = cv.TrackerCSRT_create()
     try:
         # Load the image containing the face you want to look for
@@ -260,7 +267,7 @@ def video_live():
                                 if action == 1:
                                     new_frame = blur(frame, target_face_location, used_kcf, scale_factor)
                                 elif action == 2:
-                                    new_frame = replace(frame, overlay, target_face_location, scale_factor)
+                                    new_frame = replace(frame, overlay, target_face_location, used_kcf, scale_factor)
                     else:
                         new_frame = frame
                         used_kcf = True
@@ -297,9 +304,9 @@ def video_live():
                             x, y, w, h = tuple(map(int, target_face_location))
                             #cv.rectangle(frame, target_face_location, (0, 255, 0), 2)
                             if action == 1:
-                                new_frame = blur(frame, target_face_location, used_kcf)
+                                new_frame = blur(frame, target_face_location, used_kcf, 1)
                             elif action == 2:
-                                new_frame = replace(frame, overlay, target_face_location, used_kcf)
+                                new_frame = replace(frame, overlay, target_face_location, used_kcf, 1)
         
 
         except Exception as e:
@@ -372,6 +379,7 @@ def video_pre_recorded():
             break
     # When everything done, release the capture
     cap.release()
+    out.release()
     cv.destroyAllWindows()       
 
 def display_image(images_that_match):
