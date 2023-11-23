@@ -7,7 +7,7 @@ from multiprocessing import Pool
 from time import sleep
 
 
-face_to_search_for_location = "/home/noah/Documents/software_mp/test data/john1.png"
+face_to_search_for_location = "/home/noah/Documents/software_mp/test data/img2.jpg"
 images_to_search_location = "/home/noah/Documents/software_mp/test data/"
 
 #declare the action variable
@@ -25,6 +25,8 @@ out = cv.VideoWriter('output.avi', fourcc, 20.0, (640,  480))
 # Lists to store the results
 images_that_match = []
 images_that_do_not_match = []
+
+directories = []
 
 scale_factor = 0.35
 
@@ -146,10 +148,9 @@ def __init__():
     
     if video == 2:
         # Get list of all files in the directory specified
-        images_to_search = os.listdir(images_to_search_location)
-        for image_location in images_to_search:
-            is_dir = os.path.isdir(image_location)
-            #if is_dir == 
+        images_to_search = get_files(images_to_search_location)
+        for dir in directories:
+            images_to_search.append(get_files(dir))                
 
         with Pool(processes=multiprocessing.cpu_count()) as pool:
             # Map the image processing function over the images
@@ -162,13 +163,22 @@ def __init__():
         if display.lower() == "y":
             display_image(results)
     
-        
+def get_files(images_to_search_location):
+    global directories
+    images_to_search = os.listdir(images_to_search_location)
+    for image_location in images_to_search:
+        is_dir = os.path.isdir(image_location)
+        if is_dir == True:
+            directories.append(os.path.join(images_to_search_location, image_location))
+            images_to_search.remove(image_location)
+    images_to_search = [os.path.join(images_to_search_location, x) for x in images_to_search]
+    return images_to_search
 
 def face_recog(image_name):
-    current_image_to_search_location = os.path.join(images_to_search_location, image_name)
+    used_kcf = False
     try:
         # Load and run face recognition on the image to search
-        image = face_recognition.load_image_file(current_image_to_search_location)
+        image = face_recognition.load_image_file(image_name)
         image_encodings = face_recognition.face_encodings(image)
             
         if image_encodings:
@@ -190,10 +200,10 @@ def face_recog(image_name):
                     # If it's a match, blur the face
                     if match[0]:
                         if action == 1:
-                            new_image = blur(image_bgr, target_face_location, 1)
+                            new_image = blur(image_bgr, target_face_location, used_kcf, 1)
                         elif action == 2:
                             new_image = replace(image_bgr, overlay, target_face_location, 1)
-                        cv.imwrite(current_image_to_search_location, new_image)
+                        cv.imwrite(image_name, new_image)
                 return image_name
 
             else:
@@ -205,7 +215,7 @@ def face_recog(image_name):
         print(f"An error occurred with image {image_name}: {e}")
 
 def video_live():
-    cap = cv.VideoCapture(video_file_location)
+    cap = cv.VideoCapture(0)
     tracker = cv.TrackerCSRT_create()
     try:
         # Load the image containing the face you want to look for
