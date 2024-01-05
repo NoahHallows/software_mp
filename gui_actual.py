@@ -41,6 +41,15 @@ image_list = [
     ],
 ]
 
+#select overlay
+overlay_select = [
+    [
+        sg.Text("Slect image to replace matching faces with"),
+        sg.In(size=(25, 1), enable_events=True, disabled=True, key='OVERLAY_LOCATION'),
+        sg.FileBrowse(key="OVERLAY_BROWSER", disabled=True)
+    ]
+]
+
 #View images in selected dir
 selected_img_viewer = [
     [sg.Text(size=(70, 1), key="-TOUT-")],
@@ -54,6 +63,7 @@ options = [
     [sg.Image(radio_unchecked, enable_events=True, key='-R2-', metadata=False), sg.Text('replace face', enable_events=True, key='-TTT2-')],
 ]
 
+
 # Layout
 layout = [
     select_target_face,
@@ -63,7 +73,9 @@ layout = [
         sg.VSeparator(),
         sg.Column(selected_img_viewer)
     ],
-    options
+    options,
+    overlay_select,
+    [sg.Button('Start', size=(5, 2), button_color=('white', 'springgreen4'), key='SUBMIT')],
 ]
 
 window = sg.Window("Face removal tool", layout)
@@ -75,6 +87,11 @@ def check_radio(key):
     window[key].update(radio_checked)
     window[key].metadata = True
 
+#Declare action variable so if the radio button isn't clicked it still has a value
+action = 1
+
+#list what elements to disable
+key_list = 'OVERLAY_LOCATION', 'OVERLAY_BROWSER'
 
 while True:
     event, values = window.Read()
@@ -141,8 +158,18 @@ while True:
         check_radio(event.replace('TTT', 'R'))
     if event == "-R1-":
         action = 1
+        for key in key_list:
+            window[key].update(disabled=True)
     if event == "-R2-":
         action = 2
+        for key in key_list:
+            window[key].update(disabled=False)
+    
+    #Logic for start button
+    if event == "SUBMIT":
+        print(f"action = {action}")
+        print(f"target face location = {target_face_location}")
+        print(f"Images to search directory = {folder}")
 
 
 window.Close()
