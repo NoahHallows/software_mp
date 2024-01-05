@@ -1,6 +1,7 @@
 import PySimpleGUI as sg
 import os
 import cv2
+import face_id_picture
 
 
 radio_keys = ("-R1-", "-R2-")
@@ -87,8 +88,9 @@ def check_radio(key):
     window[key].update(radio_checked)
     window[key].metadata = True
 
-#Declare action variable so if the radio button isn't clicked it still has a value
+#Declare action and overlay_location variable so if the radio button isn't clicked it still has a value
 action = 1
+overlay_location = ''
 
 #list what elements to disable
 key_list = 'OVERLAY_LOCATION', 'OVERLAY_BROWSER'
@@ -165,11 +167,17 @@ while True:
         for key in key_list:
             window[key].update(disabled=False)
     
+    #Logic for overlay selection
+    if event == "OVERLAY_LOCATION":
+        overlay_location = values["OVERLAY_LOCATION"]
+    
     #Logic for start button
     if event == "SUBMIT":
         print(f"action = {action}")
         print(f"target face location = {target_face_location}")
         print(f"Images to search directory = {folder}")
+        results = face_id_picture.__init__(folder, target_face_location, action, overlay_location)
+        print(results)
 
 
 window.Close()
