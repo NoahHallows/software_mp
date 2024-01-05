@@ -27,9 +27,13 @@ select_target_face = [
 select_image_dir = [
     [
         sg.Text("Select the directory containing the images to search and edit"),
-        sg.In(size=(25, 1), key="-IMAGE_DIRECTORY-"),
+        sg.In(size=(25, 1), enable_events=True, key="-IMAGE_DIRECTORY-"),
         sg.FolderBrowse(),
     ],
+]
+
+#List images in selected dir
+image_list = [
     [
         sg.Listbox(
             values=[], enable_events=True, size=(40, 20), key="-LIST_IMAGES-"
@@ -37,17 +41,28 @@ select_image_dir = [
     ],
 ]
 
+#View images in selected dir
+selected_img_viewer = [
+    [sg.Text(size=(70, 1), key="-TOUT-")],
+    [sg.Image(key="-SELECTED_IMAGE-")],
+]
+
 # Section for options
 options = [
     [sg.Text("If an image is found to contain the searched for face should the program:")],
-    [sg.Image(radio_checked, enable_events=True, key='-R1-', metadata=True), sg.Text('blur face', enable_events=True, key='-T1-')],
-    [sg.Image(radio_unchecked, enable_events=True, key='-R2-', metadata=False), sg.Text('replace face', enable_events=True, key='-T2-')],
+    [sg.Image(radio_checked, enable_events=True, key='-R1-', metadata=True), sg.Text('blur face', enable_events=True, key='-TTT1-')],
+    [sg.Image(radio_unchecked, enable_events=True, key='-R2-', metadata=False), sg.Text('replace face', enable_events=True, key='-TTT2-')],
 ]
 
 # Layout
 layout = [
-    [sg.Column(select_target_face)],
-    [sg.Column(select_image_dir)],
+    select_target_face,
+    select_image_dir,
+    [
+        sg.Column(image_list),
+        sg.VSeparator(),
+        sg.Column(selected_img_viewer)
+    ],
     options
 ]
 
@@ -75,8 +90,7 @@ while True:
         height, width, channels = image.shape
         scale_factor = (100/height)
         new_width = int(round(scale_factor*width, 0))
-        print(height, width, new_width)
-        resized_image = cv2.resize(image, (100, new_width), interpolation=cv2.INTER_AREA)
+        resized_image = cv2.resize(image, (new_width, 100), interpolation=cv2.INTER_AREA)
         imgbytes = cv2.imencode(".png", resized_image)[1].tobytes()
         window["-TARGET_FACE_DISPLAY-"].update(data=imgbytes, size=(100, new_width))
 
@@ -94,16 +108,37 @@ while True:
             f
             for f in file_list
             if os.path.isfile(os.path.join(folder, f))
-            and f.lower().endswith((".png", ".gif"))
+            and f.lower().endswith((".png", ".gif", '.jpg'))
         ]
 
         window["-LIST_IMAGES-"].update(fnames)
 
+    #Display image if clicked on from list
+    elif event == "-LIST_IMAGES-":  # A file was chosen from the listbox
+
+        try:
+            filename = os.path.join(
+
+                values["-IMAGE_DIRECTORY-"], values["-LIST_IMAGES-"][0]
+
+            )
+            image = cv2.imread(filename)
+            # Get the dimensions of the image (height, width, number_of_channels)
+            height, width, channels = image.shape
+            scale_factor = 200/height
+            new_width = int(round(scale_factor*width, 0))
+            resized_image = cv2.resize(image, (new_width, 200), interpolation=cv2.INTER_AREA)
+            imgbytes = cv2.imencode(".png", resized_image)[1].tobytes()
+            window["-SELECTED_IMAGE-"].update(data=imgbytes, size=(new_width, 200))
+            window["-TOUT-"].update(filename)
+        except:
+            pass
+
     #Get what to do to matching faces
-    #if event in radio_keys:
-    #    check_radio(event)
-    #elif event.startswith('-T'):        # If text element clicked, change it into a radio button key
-    #    check_radio(event.replace('T', 'R'))
+    if event in radio_keys:
+        check_radio(event)
+    elif event.startswith('-TTT'):        # If text element clicked, change it into a radio button key
+        check_radio(event.replace('TTT', 'R'))
     if event == "-R1-":
         action = 1
     if event == "-R2-":
