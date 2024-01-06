@@ -2,23 +2,22 @@
 import face_recognition
 import cv2 as cv
 import os
-from multiprocessing import Pool, cpu_count
+from multiprocessing import Pool, cpu_count, Queue
 import editing_image
 
 
 directories = []
-
+images_to_search = []
 action = 1
 face_to_search_for_encoding = []
 overlay = []
 
-def __init__(images_to_search_location, face_to_search_for_location, action_passed, overlay_location):
-    global action, overlay, face_to_search_for_encoding
-    action = action_passed
-    # Get list of all files in the directory specified
-    images_to_search = get_files(images_to_search_location)
-    for dir in directories:
-        images_to_search.append(get_files(dir))      
+# Initialize a multiprocessing Queue for progress updates
+#progress_queue = Queue()
+
+def start_face_recognition(face_to_search_for_location, action_passed, overlay_location):
+    global action, overlay, face_to_search_for_encoding, image_to_search
+    action = action_passed     
     #Process the image contaning the face to search for
     face_to_search_for = face_recognition.load_image_file(face_to_search_for_location)
     face_to_search_for_encoding = face_recognition.face_encodings(face_to_search_for)[0]
@@ -33,14 +32,19 @@ def __init__(images_to_search_location, face_to_search_for_location, action_pass
     return results
 
 def get_files(images_to_search_location):
-    global directories
-    images_to_search = os.listdir(images_to_search_location)
-    for image_location in images_to_search:
-        is_dir = os.path.isdir(image_location)
-        if is_dir == True:
-            directories.append(os.path.join(images_to_search_location, image_location))
-            images_to_search.remove(image_location)
-    images_to_search = [os.path.join(images_to_search_location, x) for x in images_to_search]
+    global images_to_search
+    images_to_search = []
+    directories = []
+
+    for item in os.listdir(images_to_search_location):
+        item_path = os.path.join(images_to_search_location, item)
+
+        if os.path.isdir(item_path):
+            directories.append(item_path)
+            images_to_search.extend(get_files(item_path))  # Recursively get files from subdirectories
+        else:
+            images_to_search.append(item_path)
+
     return images_to_search
 
 def face_recog(image_name):
@@ -57,7 +61,8 @@ def face_recog(image_name):
                 
             # Convert image to BGR for OpenCV
             image_bgr = cv.cvtColor(image, cv.COLOR_RGB2BGR)
-                
+            # Put progress update to the queue
+
             if results[0]:
                 # Get location of faces in image
                 target_face_locations = face_recognition.face_locations(image)
@@ -71,13 +76,20 @@ def face_recog(image_name):
                             new_image = editing_image.blur(image_bgr, target_face_location, used_kcf, 1)
                         elif action == 2:
                             new_image = editing_image.replace(image_bgr, overlay, target_face_location, 1)
-                        cv.imwrite(image_name, new_image)
+                        #cv.imwrite(image_name, new_image)
+                    # Put progress update to the queue
+                    #progress_queue.put(1)
                     return image_name
 
             else:
+                # Put progress update to the queue
+                #progress_queue.put(1)
                 return f"Image {image_name} doesn't match"
         else:
+            # Put progress update to the queue
+            #progress_queue.put(1)
             return f"No faces found in image {image_name}"
 
     except Exception as e:
+        #progress_queue.put(1)
         return f"An error occurred with image {image_name}: {e}"

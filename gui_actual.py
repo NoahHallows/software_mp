@@ -1,7 +1,10 @@
 import PySimpleGUI as sg
 import os
-import cv2
-import face_id_picture
+import cv2 as cv
+import face_recognition
+#import face_id_picture
+import editing_image
+import multiprocessing
 
 
 radio_keys = ("-R1-", "-R2-")
@@ -11,6 +14,9 @@ radio_unchecked = b'iVBORw0KGgoAAAANSUhEUgAAABkAAAAZCAYAAADE6YVjAAAEwElEQVR4nI1W
 # Base64 Encoded Radio Button Image of checked radio button
 radio_checked = b'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'
 
+
+#Theme
+sg.theme("DarkGrey6")
 
 #Section for selecting the image containing face to search for
 select_target_face = [
@@ -64,6 +70,15 @@ options = [
     [sg.Image(radio_unchecked, enable_events=True, key='-R2-', metadata=False), sg.Text('replace face', enable_events=True, key='-TTT2-')],
 ]
 
+#Progress bar
+progress_bar = [
+    [sg.Text('Progress')],
+    [
+        sg.ProgressBar(100, orientation='h', size=(20, 20), key='progressbar', visible=True, expand_x=True, bar_color="green on silver"),
+    ],
+]
+
+
 
 # Layout
 layout = [
@@ -76,10 +91,75 @@ layout = [
     ],
     options,
     overlay_select,
+    progress_bar,
     [sg.Button('Start', size=(5, 2), button_color=('white', 'springgreen4'), key='SUBMIT')],
 ]
 
 window = sg.Window("Face removal tool", layout)
+
+def get_files(images_to_search_location):
+    global images_to_search
+    images_to_search = []
+    directories = []
+
+    for item in os.listdir(images_to_search_location):
+        item_path = os.path.join(images_to_search_location, item)
+
+        if os.path.isdir(item_path):
+            directories.append(item_path)
+            images_to_search.extend(get_files(item_path))  # Recursively get files from subdirectories
+        else:
+            images_to_search.append(item_path)
+
+    return images_to_search
+
+def face_recog(image_name):
+    used_kcf = False
+    try:
+        # Load and run face recognition on the image to search
+        image = face_recognition.load_image_file(image_name)
+        image_encodings = face_recognition.face_encodings(image)
+        progress_queue.put(1)    
+        if image_encodings:
+            image_encoding = image_encodings[0]
+            # Compare faces
+            results = face_recognition.compare_faces([face_to_search_for_encoding], image_encoding)
+                
+            # Convert image to BGR for OpenCV
+            image_bgr = cv.cvtColor(image, cv.COLOR_RGB2BGR)
+
+            if results[0]:
+                # Get location of faces in image
+                target_face_locations = face_recognition.face_locations(image)
+                for target_face_location in target_face_locations:
+                    # See if the face is a match for the known face
+                    target_face_encoding = face_recognition.face_encodings(image, [target_face_location])[0]
+                    match = face_recognition.compare_faces([face_to_search_for_encoding], target_face_encoding)
+                    progress_queue.put(1)
+                    # If it's a match, blur the face
+                    if match[0]:
+                        if action == 1:
+                            new_image = editing_image.blur(image_bgr, target_face_location, used_kcf, 1)
+                        elif action == 2:
+                            new_image = editing_image.replace(image_bgr, overlay, target_face_location, used_kcf, 1)
+                        #cv.imwrite(image_name, new_image)
+                    # Put progress update to the queue
+                    progress_queue.put(1)
+                    return image_name
+
+            else:
+                # Put progress update to the queue
+                progress_queue.put(2)
+                return f"Image {image_name} doesn't match"
+        else:
+            # Put progress update to the queue
+            progress_queue.put(2)
+            return f"No faces found in image {image_name}"
+
+    except Exception as e:
+        progress_queue.put(3)
+        return f"An error occurred with image {image_name}: {e}"
+
 
 def check_radio(key):
     for k in radio_keys:
@@ -88,6 +168,41 @@ def check_radio(key):
     window[key].update(radio_checked)
     window[key].metadata = True
 
+def monitor_progress(window, total_images):
+    processed_images = 0
+    
+    while processed_images < total_images:
+        try:
+            # Get progress update from the queue
+            progress_queue.get_nowait()
+            processed_images += 1
+            #percentage =+ 1
+            # Calculate progress percentage
+            progress_percentage = (processed_images / total_images) * 100
+            print(progress_percentage)
+            # Update progress bar
+            window['progressbar'].update_bar(progress_percentage)
+            
+        except:# multiprocessing.Queue.empty:
+            continue
+
+def start_face_recognition(face_to_search_for_location, action_passed, overlay_location):
+    global action, overlay, face_to_search_for_encoding
+    action = action_passed     
+    #Process the image contaning the face to search for
+    face_to_search_for = face_recognition.load_image_file(face_to_search_for_location)
+    face_to_search_for_encoding = face_recognition.face_encodings(face_to_search_for)[0]
+    if action == 2:
+        #if selected access the overlay image
+        overlay = cv.imread(overlay_location)          
+
+    with multiprocessing.Pool(processes=multiprocessing.cpu_count()) as pool:
+        # Map the image processing function over the images
+        results = pool.map(face_recog, images_to_search)
+    results = [item for item in results if item is not None]
+    return results
+
+
 #Declare action and overlay_location variable so if the radio button isn't clicked it still has a value
 action = 1
 overlay_location = ''
@@ -95,6 +210,8 @@ overlay_location = ''
 #list what elements to disable
 key_list = 'OVERLAY_LOCATION', 'OVERLAY_BROWSER'
 
+
+#Event loop
 while True:
     event, values = window.Read()
     #Exit
@@ -104,14 +221,17 @@ while True:
     #Get target face image location
     if event == "-TARGET_FACE_LOCATION-":
         target_face_location = values["-TARGET_FACE_LOCATION-"]
-        image = cv2.imread(target_face_location)
+        image = cv.imread(target_face_location)
         # Get the dimensions of the image (height, width, number_of_channels)
-        height, width, channels = image.shape
-        scale_factor = (100/height)
-        new_width = int(round(scale_factor*width, 0))
-        resized_image = cv2.resize(image, (new_width, 100), interpolation=cv2.INTER_AREA)
-        imgbytes = cv2.imencode(".png", resized_image)[1].tobytes()
-        window["-TARGET_FACE_DISPLAY-"].update(data=imgbytes, size=(100, new_width))
+        # Calculate the aspect ratio of the original image
+        height, width = image.shape[:2]
+        aspect_ratio = width / height
+
+        # Calculate the new width based on the desired height and aspect ratio
+        new_width = int(100 * aspect_ratio)
+        resized_image = cv.resize(image, (new_width, 100), interpolation=cv.INTER_AREA)
+        imgbytes = cv.imencode(".png", resized_image)[1].tobytes()
+        window["-TARGET_FACE_DISPLAY-"].update(data=imgbytes, size=(new_width, 100))
 
     #Get location of images to search
     if event == "-IMAGE_DIRECTORY-":
@@ -141,13 +261,13 @@ while True:
                 values["-IMAGE_DIRECTORY-"], values["-LIST_IMAGES-"][0]
 
             )
-            image = cv2.imread(filename)
+            image = cv.imread(filename)
             # Get the dimensions of the image (height, width, number_of_channels)
             height, width, channels = image.shape
             scale_factor = 200/height
             new_width = int(round(scale_factor*width, 0))
-            resized_image = cv2.resize(image, (new_width, 200), interpolation=cv2.INTER_AREA)
-            imgbytes = cv2.imencode(".png", resized_image)[1].tobytes()
+            resized_image = cv.resize(image, (new_width, 200), interpolation=cv.INTER_AREA)
+            imgbytes = cv.imencode(".png", resized_image)[1].tobytes()
             window["-SELECTED_IMAGE-"].update(data=imgbytes, size=(new_width, 200))
             window["-TOUT-"].update(filename)
         except:
@@ -173,10 +293,14 @@ while True:
     
     #Logic for start button
     if event == "SUBMIT":
-        print(f"action = {action}")
-        print(f"target face location = {target_face_location}")
-        print(f"Images to search directory = {folder}")
-        results = face_id_picture.__init__(folder, target_face_location, action, overlay_location)
+        images_to_search = get_files(folder)
+        # Calculate total number of images
+        total_images = len(images_to_search)
+        # Initialize a multiprocessing Queue for progress updates
+        progress_queue = multiprocessing.Queue()
+        # Start monitoring progress in a separate process
+        multiprocessing.Process(target=monitor_progress, args=(window, total_images)).start()
+        results = start_face_recognition(target_face_location, action, overlay_location)
         print(results)
 
 

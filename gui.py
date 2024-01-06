@@ -17,6 +17,12 @@ file_list_column = [
 ]
 
 
+#Progress bar
+progress_bar = [
+    [sg.Text('Progress')],
+    [sg.ProgressBar(100, orientation='h', size=(20, 20), key='progressbar')],
+]
+
 # For now will only show the name of the file that was chosen
 image_viewer_column = [
     [sg.Text("Choose an image from list on left:")],
@@ -30,14 +36,19 @@ layout = [
         sg.Column(file_list_column),
         sg.VSeperator(),
         sg.Column(image_viewer_column),
-    ]
+    ],
+    progress_bar,
 ]
 
 window = sg.Window("Image Viewer", layout)
+percentage = 1
+
 
 # Run the Event Loop
 while True:
     event, values = window.read()
+    percentage =+ 1
+    window['progressbar'].update_bar(percentage)
     if event == "Exit" or event == sg.WIN_CLOSED:
         break
 

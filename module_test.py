@@ -4,7 +4,8 @@ import video
 face_to_search_for_location = "/home/noah/Documents/software_mp/test data/img2.jpg"
 images_to_search_location = "/home/noah/Documents/software_mp/test data/"
 
-results = face_id_picture.__init__(images_to_search_location, face_to_search_for_location, action_passed=1, overlay_location='')
+face_id_picture.get_files(images_to_search_location)
+results = face_id_picture.start_face_recognition(face_to_search_for_location, action_passed=1, overlay_location='')
 
 print(results)
 
