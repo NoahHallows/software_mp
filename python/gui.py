@@ -1,87 +1,32 @@
-import PySimpleGUI as sg
-import os.path
+import sys
+import random
+from PySide6 import QtCore, QtWidgets, QtGui
 
-# First the window layout in 2 columns
+class MyWidget(QtWidgets.QWidget):
+    def __init__(self):
+        super().__init__()
 
-file_list_column = [
-    [
-        sg.Text("Image Folder"),
-        sg.In(size=(25, 1), enable_events=True, key="-FOLDER-"),
-        sg.FolderBrowse(),
-    ],
-    [
-        sg.Listbox(
-            values=[], enable_events=True, size=(40, 20), key="-FILE LIST-"
-        )
-    ],
-]
+        self.hello = ["Hallo Welt", "Hei maailma", "Hola Mundo", "Привет мир"]
 
+        self.button = QtWidgets.QPushButton("Click me!")
+        self.text = QtWidgets.QLabel("Hello World",
+                                     alignment=QtCore.Qt.AlignCenter)
+        
+        self.layout = QtWidgets.QVBoxLayout(self)
+        self.layout.addWidget(self.text)
+        self.layout.addWidget(self.button)
 
-#Progress bar
-progress_bar = [
-    [sg.Text('Progress')],
-    [sg.ProgressBar(100, orientation='h', size=(20, 20), key='progressbar')],
-]
+        self.button.clicked.connect(self.magic)
 
-# For now will only show the name of the file that was chosen
-image_viewer_column = [
-    [sg.Text("Choose an image from list on left:")],
-    [sg.Text(size=(40, 1), key="-TOUT-")],
-    [sg.Image(key="-IMAGE-")],
-]
+    @QtCore.Slot()
+    def magic(self):
+        self.text.setText(random.choice(self.hello))
 
-# ----- Full layout -----
-layout = [
-    [
-        sg.Column(file_list_column),
-        sg.VSeperator(),
-        sg.Column(image_viewer_column),
-    ],
-    progress_bar,
-]
+if __name__ == "__main__":
+    app = QtWidgets.QApplication([])
 
-window = sg.Window("Image Viewer", layout)
-percentage = 1
+    widget = MyWidget()
+    widget.resize(800, 600)
+    widget.show()
 
-
-# Run the Event Loop
-while True:
-    event, values = window.read()
-    percentage =+ 1
-    window['progressbar'].update_bar(percentage)
-    if event == "Exit" or event == sg.WIN_CLOSED:
-        break
-
-    # Folder name was filled in, make a list of files in the folder
-    if event == "-FOLDER-":
-
-        folder = values["-FOLDER-"]
-
-        try:
-            # Get list of files in folder
-            file_list = os.listdir(folder)
-        except:
-            file_list = []
-
-        fnames = [
-            f
-            for f in file_list
-            if os.path.isfile(os.path.join(folder, f))
-            and f.lower().endswith((".png", ".gif"))
-        ]
-
-        window["-FILE LIST-"].update(fnames)
-
-    elif event == "-FILE LIST-":  # A file was chosen from the listbox
-
-        try:
-            filename = os.path.join(
-
-                values["-FOLDER-"], values["-FILE LIST-"][0]
-
-            )
-            window["-TOUT-"].update(filename)
-            window["-IMAGE-"].update(filename=filename)
-        except:
-            pass
-window.close()
+    sys.exit(app.exec())
