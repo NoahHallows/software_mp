@@ -1,32 +1,30 @@
 import sys
-import random
-from PySide6 import QtCore, QtWidgets, QtGui
+from PySide6.QtWidgets import QApplication, QDialog, QDialogButtonBox, QFormLayout, QLineEdit, QVBoxLayout, QFileDialog, QProgressBar
 
-class MyWidget(QtWidgets.QWidget):
+class Window(QDialog):
     def __init__(self):
-        super().__init__()
-
-        self.hello = ["Hallo Welt", "Hei maailma", "Hola Mundo", "Привет мир"]
-
-        self.button = QtWidgets.QPushButton("Click me!")
-        self.text = QtWidgets.QLabel("Hello World",
-                                     alignment=QtCore.Qt.AlignCenter)
-        
-        self.layout = QtWidgets.QVBoxLayout(self)
-        self.layout.addWidget(self.text)
-        self.layout.addWidget(self.button)
-
-        self.button.clicked.connect(self.magic)
-
-    @QtCore.Slot()
-    def magic(self):
-        self.text.setText(random.choice(self.hello))
+        super().__init__(parent=None)
+        self.setWindowTitle("QDialog")
+        dialogLayout = QVBoxLayout()
+        formLayout = QFormLayout()
+        formLayout.addRow("Name:", QLineEdit())
+        formLayout.addRow("Age:", QLineEdit())
+        formLayout.addRow("Job:", QLineEdit())
+        formLayout.addRow("Hobbies:", QLineEdit())
+        formLayout.addRow("Progress", QProgressBar(value=50))
+        dialogLayout.addLayout(formLayout)
+        fileName = QFileDialog.getOpenFileName(self, ("Open Image"), "/home/noah", ("Image Files (*.png *.jpg *.bmp)"))
+        print(fileName)
+        buttons = QDialogButtonBox()
+        buttons.setStandardButtons(
+            QDialogButtonBox.StandardButton.Cancel
+            | QDialogButtonBox.StandardButton.Ok
+        )
+        dialogLayout.addWidget(buttons)
+        self.setLayout(dialogLayout)
 
 if __name__ == "__main__":
-    app = QtWidgets.QApplication([])
-
-    widget = MyWidget()
-    widget.resize(800, 600)
-    widget.show()
-
+    app = QApplication([])
+    window = Window()
+    window.show()
     sys.exit(app.exec())
