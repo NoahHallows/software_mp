@@ -2,18 +2,21 @@ import sys
 from PySide6.QtWidgets import QApplication, QDialog, QDialogButtonBox, QFormLayout, QLineEdit, QVBoxLayout, QFileDialog, QProgressBar, QRadioButton, QPushButton, QLabel, QGridLayout, QListWidget
 from PySide6.QtCore import Slot
 import re
-import cv2 as cv
+#import cv2 as cv
 import os
+import face_id_picture
 
 class Window(QDialog):
     target_face_location = ""
     images_to_search_location = ""
+    overlay_image_location = ""
+    action = 1
     # Logic for getting radio button value
     @Slot()
     def radio(self):
+        global action
         button = self.sender()
         action = button.option
-        print(f"action {action} was selected")
     
     def __init__(self):
         super().__init__(parent=None)
@@ -57,12 +60,42 @@ class Window(QDialog):
         replace_button.clicked.connect(self.radio)
         delete_button.clicked.connect(self.radio)
 
+        # Select overlay image if applicable
+        select_image_directory_button = QPushButton("Browse")
+        self.select_image_directory_text_box = QLineEdit()
+        gridLayout.addWidget(QLabel("Select the overlay image:"), 7, 0)
+        gridLayout.addWidget(self.select_image_directory_text_box, 7, 1)
+        gridLayout.addWidget(select_image_directory_button, 7, 2)
+        select_image_directory_button.clicked.connect(self.select_overlay_image)
+
         # Add formLayout to dialogLayout
         dialogLayout.addLayout(gridLayout)
+
+        # Add standard buttons
+        buttons = QDialogButtonBox()
+        buttons.setStandardButtons(
+            QDialogButtonBox.StandardButton.Cancel
+            | QDialogButtonBox.StandardButton.Ok
+        )
+        dialogLayout.addWidget(buttons)
+        # Connect the accepted and rejected signals to respective methods
+        buttons.accepted.connect(self.accept)
+        buttons.rejected.connect(self.reject)
+
+        
         # Set dialogLayout to be the layout of the window
         self.setLayout(dialogLayout)
         
-
+    # Logic for selecting overlay image
+    @Slot()
+    def select_overlay_image(self):
+        global overlay_image_location
+        overlay_image_location_untrimmed = QFileDialog.getOpenFileName(self, ("Open image"), "", ("folder (*.png *.jpg *.bmp)"))
+        if overlay_image_location_untrimmed:
+            self.target_image_text_box.clear()
+            # Use regular expression to find the file path
+            overlay_image_location = re.search(r"'(.*?)'", str(overlay_image_location_untrimmed)).group(1)
+            self.target_image_text_box.setText(overlay_image_location)
 
     # Logic for selecting image directory
     @Slot()
@@ -99,6 +132,18 @@ class Window(QDialog):
             target_face_location = re.search(r"'(.*?)'", str(target_face_location_untrimmed)).group(1)
             self.target_image_text_box.setText(target_face_location)
     
+# For standard buttons
+    @Slot()
+    def accept(self):
+        print("Ok button was clicked.")
+        window.close()
+
+    @Slot()
+    def reject(self):
+        print("Cancel button was clicked.")
+        window.close()
+
+    # Display selected target image
     def display_target_image(self):
         pass
 
