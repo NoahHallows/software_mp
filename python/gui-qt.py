@@ -16,13 +16,25 @@ class Window(QDialog):
     def radio(self):
         global action
         button = self.sender()
-        action = button.option
+        action = button.option  
+
+    # For standard buttons
+    @Slot()
+    def accept(self):
+        print("Ok button was clicked.")
+        face_id_picture.__init__(target_face_location, action, overlay_location=Null)
+        
+
+    @Slot()
+    def reject(self):
+        print("Cancel button was clicked.")
+        exit()
     
     def __init__(self):
         super().__init__(parent=None)
         self.setWindowTitle("Face removal tool")
         dialogLayout = QVBoxLayout()
-        formLayout = QFormLayout()
+        #formLayout = QFormLayout()
         gridLayout = QGridLayout()
         # Selecting target face image
         target_image_button = QPushButton("Browse")
@@ -72,15 +84,13 @@ class Window(QDialog):
         dialogLayout.addLayout(gridLayout)
 
         # Add standard buttons
-        buttons = QDialogButtonBox()
-        buttons.setStandardButtons(
-            QDialogButtonBox.StandardButton.Cancel
-            | QDialogButtonBox.StandardButton.Ok
-        )
-        dialogLayout.addWidget(buttons)
+        self.standard_buttons = QDialogButtonBox(QDialogButtonBox.Ok
+
+                             | QDialogButtonBox.Cancel)
+        dialogLayout.addWidget(self.standard_buttons)
         # Connect the accepted and rejected signals to respective methods
-        buttons.accepted.connect(self.accept)
-        buttons.rejected.connect(self.reject)
+        self.standard_buttons.accepted.connect(self.accept)
+        self.standard_buttons.rejected.connect(self.reject)
 
         
         # Set dialogLayout to be the layout of the window
@@ -120,6 +130,8 @@ class Window(QDialog):
             ]
             for image in fnames:
                 self.image_list_box.addItem(image)
+            # Call function to get files in directory
+            face_id_picture.get_files(images_to_search_location)
 
     # Logic for selecting target image
     @Slot()
@@ -132,16 +144,7 @@ class Window(QDialog):
             target_face_location = re.search(r"'(.*?)'", str(target_face_location_untrimmed)).group(1)
             self.target_image_text_box.setText(target_face_location)
     
-# For standard buttons
-    @Slot()
-    def accept(self):
-        print("Ok button was clicked.")
-        window.close()
 
-    @Slot()
-    def reject(self):
-        print("Cancel button was clicked.")
-        window.close()
 
     # Display selected target image
     def display_target_image(self):
