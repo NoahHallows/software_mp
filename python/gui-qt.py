@@ -4,7 +4,7 @@ from PySide6.QtCore import Slot
 import re
 #import cv2 as cv
 import os
-import face_id_picture
+from face_id_picture import get_files
 
 class Window(QDialog):
     target_face_location = ""
@@ -18,17 +18,24 @@ class Window(QDialog):
         button = self.sender()
         action = button.option  
 
+    # For end screen
+    def end(self):
+
+
     # For standard buttons
     @Slot()
     def accept(self):
         print("Ok button was clicked.")
-        face_id_picture.__init__(target_face_location, action, overlay_location=Null)
+        import face_id_picture
+        results = face_id_picture.start_face_recognition(target_face_location, action, overlay_image_location)
+        print(results)
+        self.close()
+        end()
         
 
     @Slot()
-    def reject(self):
-        print("Cancel button was clicked.")
-        exit()
+    def cancel(self):
+        self.close()
     
     def __init__(self):
         super().__init__(parent=None)
@@ -73,12 +80,12 @@ class Window(QDialog):
         delete_button.clicked.connect(self.radio)
 
         # Select overlay image if applicable
-        select_image_directory_button = QPushButton("Browse")
-        self.select_image_directory_text_box = QLineEdit()
+        select_overlay_button = QPushButton("Browse")
+        self.select_overlay_text_box = QLineEdit()
         gridLayout.addWidget(QLabel("Select the overlay image:"), 7, 0)
-        gridLayout.addWidget(self.select_image_directory_text_box, 7, 1)
-        gridLayout.addWidget(select_image_directory_button, 7, 2)
-        select_image_directory_button.clicked.connect(self.select_overlay_image)
+        gridLayout.addWidget(self.select_overlay_text_box, 7, 1)
+        gridLayout.addWidget(select_overlay_button, 7, 2)
+        select_overlay_button.clicked.connect(self.select_overlay_image)
 
         # Add formLayout to dialogLayout
         dialogLayout.addLayout(gridLayout)
@@ -102,10 +109,10 @@ class Window(QDialog):
         global overlay_image_location
         overlay_image_location_untrimmed = QFileDialog.getOpenFileName(self, ("Open image"), "", ("folder (*.png *.jpg *.bmp)"))
         if overlay_image_location_untrimmed:
-            self.target_image_text_box.clear()
+            self.select_overlay_text_box.clear()
             # Use regular expression to find the file path
             overlay_image_location = re.search(r"'(.*?)'", str(overlay_image_location_untrimmed)).group(1)
-            self.target_image_text_box.setText(overlay_image_location)
+            self.select_overlay_text_box.setText(overlay_image_location)
 
     # Logic for selecting image directory
     @Slot()
@@ -131,7 +138,7 @@ class Window(QDialog):
             for image in fnames:
                 self.image_list_box.addItem(image)
             # Call function to get files in directory
-            face_id_picture.get_files(images_to_search_location)
+            get_files(images_to_search_location)
 
     # Logic for selecting target image
     @Slot()
@@ -149,6 +156,8 @@ class Window(QDialog):
     # Display selected target image
     def display_target_image(self):
         pass
+
+
 
 
 
