@@ -2,7 +2,7 @@ import sys
 from PySide6.QtWidgets import QApplication, QDialog, QDialogButtonBox, QFormLayout, QLineEdit, QVBoxLayout, QFileDialog, QProgressBar, QRadioButton, QPushButton, QLabel, QGridLayout, QListWidget
 from PySide6.QtCore import Slot
 import re
-#import cv2 as cv
+import cv2 as cv
 import os
 from face_id_picture import get_files
 
@@ -19,7 +19,20 @@ class Window(QDialog):
         action = button.option  
 
     # For end screen
-    def end(self):
+    def end_screen(self, results):
+        end_grid = QGridLayout()
+        x = 0
+        y = 0
+        for image_name in results:
+            image_name = "." + image_name + ".temp"
+            image = cv.imread(image_name)
+            # Get the dimensions of the image (height, width, number_of_channels)
+            height, width, channels = image.shape
+            scale_factor = 200/height
+            new_width = int(round(scale_factor*width, 0))
+            resized_image = cv.resize(image, (new_width, 200), interpolation=cv.INTER_AREA)
+            imgbytes = cv.imencode(".png", resized_image)[1].tobytes()
+            image_display =  
 
 
     # For standard buttons
@@ -30,7 +43,7 @@ class Window(QDialog):
         results = face_id_picture.start_face_recognition(target_face_location, action, overlay_image_location)
         print(results)
         self.close()
-        end()
+        end_screen(self, results)
         
 
     @Slot()

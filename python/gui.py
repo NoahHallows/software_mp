@@ -7,6 +7,17 @@ class Window(QDialog):
     def checker(self):
         button = self.sender()
         print(f"option {button.option} was")
+        self.close()
+
+    @Slot()
+    def accept(self):
+        print("Ok button was clicked")
+        
+    
+    @Slot()
+    def cancel(self):
+        print("Cancel button was clicked")
+        self.close()
     
     def __init__(self):
         super().__init__(parent=None)
@@ -34,12 +45,14 @@ class Window(QDialog):
 
         fileName = QFileDialog.getOpenFileName(self, ("Open Image"), "/home/noah", ("Image Files (*.png *.jpg *.bmp)"))
         print(fileName)
-        buttons = QDialogButtonBox()
-        buttons.setStandardButtons(
+        self.buttons = QDialogButtonBox()
+        self.buttons.setStandardButtons(
             QDialogButtonBox.StandardButton.Cancel
             | QDialogButtonBox.StandardButton.Ok
         )
-        dialogLayout.addWidget(buttons)
+        self.buttons.accepted.connect(self.accept)
+        #self.buttons.rejected.connect(self.reject)
+        dialogLayout.addWidget(self.buttons)
         self.setLayout(dialogLayout)
     
 

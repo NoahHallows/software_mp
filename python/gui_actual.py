@@ -348,8 +348,8 @@ while True:
         sg.popup_notify(title="Finished")
         #print(results)
         window.Close()
+        end_event_loop(results)
         break
 
-end_event_loop(results)
 
 window.Close()
