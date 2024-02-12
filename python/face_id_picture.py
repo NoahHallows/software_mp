@@ -61,8 +61,6 @@ def face_recog(image_name):
                 
             # Convert image to BGR for OpenCV
             image_bgr = cv.cvtColor(image, cv.COLOR_RGB2BGR)
-            # Put progress update to the queue
-
             if results[0]:
                 # Get location of faces in image
                 target_face_locations = face_recognition.face_locations(image)
@@ -76,20 +74,21 @@ def face_recog(image_name):
                             new_image = editing_image.blur(image_bgr, target_face_location, used_kcf, 1)
                         elif action == 2:
                             new_image = editing_image.replace(image_bgr, overlay, target_face_location, 1)
-                        #cv.imwrite(image_name, new_image)
+                        new_image_name = "." + image_name + ".temp"
+                        cv.imwrite(new_image_name, new_image)
                     # Put progress update to the queue
                     #progress_queue.put(1)
                     return image_name
 
             else:
                 # Put progress update to the queue
-                #progress_queue.put(1)
+                progress_queue.put(1)
                 return f"Image {image_name} doesn't match"
         else:
             # Put progress update to the queue
-            #progress_queue.put(1)
+            progress_queue.put(1)
             return f"No faces found in image {image_name}"
 
     except Exception as e:
-        #progress_queue.put(1)
+        progress_queue.put(1)
         return f"An error occurred with image {image_name}: {e}"
