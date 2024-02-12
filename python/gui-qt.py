@@ -8,14 +8,14 @@ from face_id_picture import get_files
 from multiprocessing import Pool, cpu_count, Queue
 import face_recognition
 
-
+target_face_location = ""
+fnames = ""
+overlay_image_location = ""
+action = 1
+progress_queue = Queue()
 
 class Window(QDialog):
-    target_face_location = ""
-    images_to_search_location = ""
-    overlay_image_location = ""
-    action = 1
-    progress_queue = Queue()
+    
     # Logic for getting radio button value
     @Slot()
     def radio(self):
@@ -45,7 +45,7 @@ class Window(QDialog):
     @Slot()
     def accept(self):
         print("Ok button was clicked.")
-        global action, overlay, face_to_search_for_encoding, image_to_search     
+        global action, overlay, face_to_search_for_encoding, fnames   
         #Process the image contaning the face to search for
         face_to_search_for = face_recognition.load_image_file(target_face_location)
         face_to_search_for_encoding = face_recognition.face_encodings(face_to_search_for)[0]
@@ -53,9 +53,12 @@ class Window(QDialog):
             #if selected access the overlay image
             overlay = cv.imread(overlay_location)          
 
-        with Pool(processes=cpu_count()) as pool:
+        #with Pool(processes=cpu_count()) as pool:
+        for image in fnames:
+            print(fnames)
             # Map the image processing function over the images
-            results = pool.map(face_recog, images_to_search)
+            results = face_recog(image)
+            #results = pool.map(face_recog, fnames)
         results = [item for item in results if item is not None]
         return results
         print(results)
@@ -153,7 +156,7 @@ class Window(QDialog):
     # Logic for selecting image directory
     @Slot()
     def select_image_directory(self):
-        global images_to_search_location
+        global fnames
         images_to_search_location = QFileDialog.getExistingDirectory(self, ("Open folder"))
         if images_to_search_location:
             self.select_image_directory_text_box.clear()
@@ -193,52 +196,56 @@ class Window(QDialog):
     def display_target_image(self):
         pass
 
-    def face_recog(image_name):
-        try:
-            # Load and run face recognition on the image to search
-            image = face_recognition.load_image_file(image_name)
-            image_encodings = face_recognition.face_encodings(image)
-            if image_encodings:
-                image_encoding = image_encodings[0]
-                # Compare faces
-                results = face_recognition.compare_faces([face_to_search_for_encoding], image_encoding)
-                    
-                # Convert image to BGR for OpenCV
-                image_bgr = cv.cvtColor(image, cv.COLOR_RGB2BGR)
-                if results[0]:
-                    # Get location of faces in image
-                    target_face_locations = face_recognition.face_locations(image)
-                    for target_face_location in target_face_locations:
-                        # See if the face is a match for the known face
-                        target_face_encoding = face_recognition.face_encodings(image, [target_face_location])[0]
-                        match = face_recognition.compare_faces([face_to_search_for_encoding], target_face_encoding)
-                        # If it's a match, blur the face
-                        if match[0]:
-                            if action == 1:
-                                new_image = editing_image.blur(image_bgr, target_face_location, used_kcf, 1)
-                            elif action == 2:
-                                new_image = editing_image.replace(image_bgr, overlay, target_face_location, 1)
-                            new_image_name = "." + image_name + ".temp"
-                            cv.imwrite(new_image_name, new_image)
-                        # Put progress update to the queue
-                        #progress_queue.put(1)
-                        return image_name
-
-                else:
+    
+def face_recog(image_name):
+    print(image_name)
+    try:
+        print("3")
+        # Load and run face recognition on the image to search
+        image = face_recognition.load_image_file(image_name)
+        print("8")
+        image_encodings = face_recognition.face_encodings(image)
+        print("7")
+        if image_encodings:
+            image_encoding = image_encodings[0]
+            # Compare faces
+            results = face_recognition.compare_faces([face_to_search_for_encoding], image_encoding)
+            print("5")
+            # Convert image to BGR for OpenCV
+            image_bgr = cv.cvtColor(image, cv.COLOR_RGB2BGR)
+            if results[0]:
+                print("6")
+                # Get location of faces in image
+                target_face_locations = face_recognition.face_locations(image)
+                for target_face_location in target_face_locations:
+                    # See if the face is a match for the known face
+                    target_face_encoding = face_recognition.face_encodings(image, [target_face_location])[0]
+                    match = face_recognition.compare_faces([face_to_search_for_encoding], target_face_encoding)
+                    # If it's a match, blur the face
+                    if match[0]:
+                        if action == 1:
+                            new_image = editing_image.blur(image_bgr, target_face_location, used_kcf, 1)
+                        elif action == 2:
+                            new_image = editing_image.replace(image_bgr, overlay, target_face_location, 1)
+                        new_image_name = "." + image_name + ".temp"
+                        cv.imwrite(new_image_name, new_image)
                     # Put progress update to the queue
-                    progress_queue.put(1)
-                    return f"Image {image_name} doesn't match"
+                    #progress_queue.put(1)
+                    print("4")
+                    return image_name
+
             else:
                 # Put progress update to the queue
                 progress_queue.put(1)
-                return f"No faces found in image {image_name}"
-
-        except Exception as e:
+                return f"Image {image_name} doesn't match"
+        else:
+            # Put progress update to the queue
             progress_queue.put(1)
-            return f"An error occurred with image {image_name}: {e}"
+            return f"No faces found in image {image_name}"
 
-
-
+    except Exception as e:
+        progress_queue.put(1)
+        return f"An error occurred with image {image_name}: {e}"
 
 
 if __name__ == "__main__":

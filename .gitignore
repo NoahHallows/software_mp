@@ -1,2 +1,5 @@
 python/software_venv
 python/create
+.vscode/launch.json
+.venv
+create/

@@ -19,8 +19,8 @@ video_file_location = '/home/noah/Videos/Last.Week.Tonight.with.John.Oliver.S10E
 overlay_location = "/home/noah/Documents/software_mp/Laughing_man.png"
 
 # Define the codec and create VideoWriter object
-fourcc = cv.VideoWriter_fourcc(*'XVID')
-out = cv.VideoWriter('output.avi', fourcc, 20.0, (640,  480))
+#fourcc = cv.VideoWriter_fourcc(*'XVID')
+#out = cv.VideoWriter('output.avi', fourcc, 20.0, (640,  480))
 
 # Lists to store the results
 images_that_match = []
@@ -380,6 +380,51 @@ def display_image(images_that_match):
         cv.destroyAllWindows()
         if k == ord("s"):
             exit()
+
+
+def face_recog(image_name):
+    try:
+        # Load and run face recognition on the image to search
+        image = face_recognition.load_image_file(image_name)
+        image_encodings = face_recognition.face_encodings(image)
+        if image_encodings:
+            image_encoding = image_encodings[0]
+            # Compare faces
+            results = face_recognition.compare_faces([face_to_search_for_encoding], image_encoding)
+                    
+            # Convert image to BGR for OpenCV
+            image_bgr = cv.cvtColor(image, cv.COLOR_RGB2BGR)
+            if results[0]:
+                # Get location of faces in image
+                target_face_locations = face_recognition.face_locations(image)
+                for target_face_location in target_face_locations:
+                    # See if the face is a match for the known face
+                    target_face_encoding = face_recognition.face_encodings(image, [target_face_location])[0]
+                    match = face_recognition.compare_faces([face_to_search_for_encoding], target_face_encoding)
+                    # If it's a match, blur the face
+                    if match[0]:
+                        if action == 1:
+                            new_image = editing_image.blur(image_bgr, target_face_location, used_kcf, 1)
+                        elif action == 2:
+                            new_image = editing_image.replace(image_bgr, overlay, target_face_location, 1)
+                        new_image_name = "." + image_name + ".temp"
+                        cv.imwrite(new_image_name, new_image)
+                    # Put progress update to the queue
+                    #progress_queue.put(1)
+                    return image_name
+
+            else:
+                # Put progress update to the queue
+                progress_queue.put(1)
+                return f"Image {image_name} doesn't match"
+        else:
+            # Put progress update to the queue
+            progress_queue.put(1)
+            return f"No faces found in image {image_name}"
+    
+    except Exception as e:
+        progress_queue.put(1)
+        return f"An error occurred with image {image_name}: {e}"
 
 # Run the face recognition
 if __name__ == '__main__':
