@@ -3,3 +3,4 @@ python/create
 .vscode/launch.json
 .venv
 create/
+.vscode/settings.json
