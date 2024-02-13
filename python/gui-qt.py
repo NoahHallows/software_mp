@@ -4,12 +4,12 @@ from PySide6.QtCore import Slot
 import re
 import cv2 as cv
 import os
-from face_id_picture import get_files
+import face_id_picture
 from multiprocessing import Pool, cpu_count, Queue
 import face_recognition
 
 target_face_location = ""
-fnames = ""
+images_to_search_location = ""
 overlay_image_location = ""
 action = 1
 progress_queue = Queue()
@@ -45,25 +45,24 @@ class Window(QDialog):
     @Slot()
     def accept(self):
         print("Ok button was clicked.")
-        global action, overlay, face_to_search_for_encoding, fnames   
+        global action, overlay, face_to_search_for_encoding, image_to_search_location 
         #Process the image contaning the face to search for
+        print('0')
         face_to_search_for = face_recognition.load_image_file(target_face_location)
+        print("0.5")
         face_to_search_for_encoding = face_recognition.face_encodings(face_to_search_for)[0]
         if action == 2:
             #if selected access the overlay image
             overlay = cv.imread(overlay_location)          
-
-        #with Pool(processes=cpu_count()) as pool:
-        for image in fnames:
-            print(fnames)
+        # Call function to get files in directory
+        images_to_search = face_id_picture.get_files(images_to_search_location)
+        with Pool(processes=cpu_count()) as pool:
             # Map the image processing function over the images
-            results = face_recog(image)
-            #results = pool.map(face_recog, fnames)
+            results = pool.map(face_recog, images_to_search)
         results = [item for item in results if item is not None]
-        return results
         print(results)
         self.close()
-        end_screen(self, results)
+        #end_screen(self, results)
         
 
     @Slot()
@@ -156,7 +155,7 @@ class Window(QDialog):
     # Logic for selecting image directory
     @Slot()
     def select_image_directory(self):
-        global fnames
+        global images_to_search_location
         images_to_search_location = QFileDialog.getExistingDirectory(self, ("Open folder"))
         if images_to_search_location:
             self.select_image_directory_text_box.clear()
@@ -176,8 +175,7 @@ class Window(QDialog):
             ]
             for image in fnames:
                 self.image_list_box.addItem(image)
-            # Call function to get files in directory
-            get_files(images_to_search_location)
+
 
     # Logic for selecting target image
     @Slot()
@@ -198,23 +196,23 @@ class Window(QDialog):
 
     
 def face_recog(image_name):
-    print(image_name)
+    print("1")
+    used_kcf = False
     try:
-        print("3")
         # Load and run face recognition on the image to search
+        print("2")
         image = face_recognition.load_image_file(image_name)
-        print("8")
+        print("3")
         image_encodings = face_recognition.face_encodings(image)
-        print("7")
+            
         if image_encodings:
             image_encoding = image_encodings[0]
             # Compare faces
             results = face_recognition.compare_faces([face_to_search_for_encoding], image_encoding)
-            print("5")
+                
             # Convert image to BGR for OpenCV
             image_bgr = cv.cvtColor(image, cv.COLOR_RGB2BGR)
             if results[0]:
-                print("6")
                 # Get location of faces in image
                 target_face_locations = face_recognition.face_locations(image)
                 for target_face_location in target_face_locations:
@@ -229,24 +227,17 @@ def face_recog(image_name):
                             new_image = editing_image.replace(image_bgr, overlay, target_face_location, 1)
                         new_image_name = "." + image_name + ".temp"
                         cv.imwrite(new_image_name, new_image)
-                    # Put progress update to the queue
-                    #progress_queue.put(1)
-                    print("4")
                     return image_name
 
             else:
                 # Put progress update to the queue
-                progress_queue.put(1)
                 return f"Image {image_name} doesn't match"
         else:
             # Put progress update to the queue
-            progress_queue.put(1)
             return f"No faces found in image {image_name}"
 
     except Exception as e:
-        progress_queue.put(1)
         return f"An error occurred with image {image_name}: {e}"
-
 
 if __name__ == "__main__":
     app = QApplication([])

@@ -48,10 +48,13 @@ def get_files(images_to_search_location):
     return images_to_search
 
 def face_recog(image_name):
+    print("1")
     used_kcf = False
     try:
         # Load and run face recognition on the image to search
+        print("2")
         image = face_recognition.load_image_file(image_name)
+        print("3")
         image_encodings = face_recognition.face_encodings(image)
             
         if image_encodings:
@@ -76,19 +79,14 @@ def face_recog(image_name):
                             new_image = editing_image.replace(image_bgr, overlay, target_face_location, 1)
                         new_image_name = "." + image_name + ".temp"
                         cv.imwrite(new_image_name, new_image)
-                    # Put progress update to the queue
-                    #progress_queue.put(1)
                     return image_name
 
             else:
                 # Put progress update to the queue
-                progress_queue.put(1)
                 return f"Image {image_name} doesn't match"
         else:
             # Put progress update to the queue
-            progress_queue.put(1)
             return f"No faces found in image {image_name}"
 
     except Exception as e:
-        progress_queue.put(1)
         return f"An error occurred with image {image_name}: {e}"
