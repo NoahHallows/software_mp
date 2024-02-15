@@ -1,6 +1,7 @@
 import sys
 from PySide6.QtWidgets import QApplication, QDialog, QDialogButtonBox, QFormLayout, QLineEdit, QVBoxLayout, QFileDialog, QProgressBar, QRadioButton
 from PySide6.QtCore import Slot
+from time import sleep
 
 class Window(QDialog):
     @Slot()
@@ -28,7 +29,8 @@ class Window(QDialog):
         formLayout.addRow("Age:", QLineEdit())
         formLayout.addRow("Job:", QLineEdit())
         formLayout.addRow("Hobbies:", QLineEdit())
-        formLayout.addRow("Progress", QProgressBar(value=50))
+        progress_bar = QProgressBar(value=0)
+        formLayout.addRow("Progress", progress_bar)
         button = QRadioButton("Button 1", self)
         button.option = 1
         button2 = QRadioButton("Button 2", self)
@@ -54,7 +56,11 @@ class Window(QDialog):
         #self.buttons.rejected.connect(self.reject)
         dialogLayout.addWidget(self.buttons)
         self.setLayout(dialogLayout)
-    
+        n = 0
+        while True:
+            n = n + 1
+            progress_bar.setValue(n)
+            sleep(0.5)
 
 if __name__ == "__main__":
     app = QApplication([])

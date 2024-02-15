@@ -4,3 +4,5 @@ python/create
 .venv
 create/
 .vscode/settings.json
+python/__pycache__/editing_image.cpython-311.pyc
+python/__pycache__/face_id_picture.cpython-311.pyc

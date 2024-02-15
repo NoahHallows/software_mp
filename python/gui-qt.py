@@ -8,6 +8,7 @@ import editing_image
 from face_id_picture import get_files
 from multiprocessing import Pool, cpu_count, Queue
 import face_recognition
+from threading import Thread
 
 target_face_location = ""
 images_to_search_location = ""
@@ -41,28 +42,39 @@ class Window(QDialog):
             imgbytes = cv.imencode(".png", resized_image)[1].tobytes()
             #image_display =  
 
+    # Logic for progress bar
+    def progress_bar_update(self, images_to_search):
+        print("Threading")
+        percentage = progress_queue.get() * (100/len(images_to_search))
+        self.progress_bar.setValue(progress_queue.get())
 
     # For standard buttons
     @Slot()
     def accept(self):
         print("Ok button was clicked.")
-        global action, overlay, face_to_search_for_encoding, image_to_search_location 
+        # Call function to get files in directory
+        images_to_search = get_files(images_to_search_location)
+        t1 = Thread(target=Window.start, args=[images_to_search])
+        t = Thread(target=Window.progress_bar_update, args=[self, images_to_search])
+        t.start()
+        t1.start()
+        self.close()
+        #end_screen(self, results)
+    
+    def start(images_to_search):
+        global action, overlay, face_to_search_for_encoding
         #Process the image contaning the face to search for
         face_to_search_for = face_recognition.load_image_file(target_face_location)
         face_to_search_for_encoding = face_recognition.face_encodings(face_to_search_for)[0]
         if action == 2:
             #if selected access the overlay image
             overlay = cv.imread(overlay_image_location)          
-        # Call function to get files in directory
-        images_to_search = get_files(images_to_search_location)
-        with Pool(processes=(cpu_count()-1)) as pool:
+        cpus = cpu_count() - 1
+        with Pool(processes=(cpus)) as pool:
             # Map the image processing function over the images
             results = pool.map(face_recog, images_to_search)
         results = [item for item in results if item is not None]
         print(results)
-        self.close()
-        #end_screen(self, results)
-        
 
     @Slot()
     def cancel(self):
@@ -123,8 +135,8 @@ class Window(QDialog):
         dialogLayout.addLayout(gridLayout)
 
         # Progress bar
-        progress_bar = QProgressBar(value=0)
-        dialogLayout.addWidget(progress_bar)
+        self.progress_bar = QProgressBar()
+        dialogLayout.addWidget(self.progress_bar)
 
 
         # Add standard buttons
@@ -195,13 +207,10 @@ class Window(QDialog):
 
     
 def face_recog(image_name):
-    print("1")
     used_kcf = False
     try:
         # Load and run face recognition on the image to search
-        print("2")
         image = face_recognition.load_image_file(image_name)
-        print("3")
         image_encodings = face_recognition.face_encodings(image)
             
         if image_encodings:
@@ -225,16 +234,20 @@ def face_recog(image_name):
                         elif action == 2:
                             new_image = editing_image.replace(image_bgr, overlay, target_face_location, False, 1)
                         cv.imwrite(image_name, new_image)
+                        progress_queue.put(1)
                     return image_name
 
             else:
                 # Put progress update to the queue
+                progress_queue.put(1)
                 return f"Image {image_name} doesn't match"
         else:
             # Put progress update to the queue
+            progress_queue.put(1)
             return f"No faces found in image {image_name}"
 
     except Exception as e:
+        progress_queue.put(1)
         return f"An error occurred with image {image_name}: {e}"
 
 if __name__ == "__main__":
