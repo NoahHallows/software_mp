@@ -12,8 +12,7 @@ action = 1
 face_to_search_for_encoding = []
 overlay = []
 
-# Initialize a multiprocessing Queue for progress updates
-#progress_queue = Queue()
+
 
 def start_face_recognition(face_to_search_for_location, action_passed, overlay_location):
     global action, overlay, face_to_search_for_encoding, image_to_search

@@ -30,7 +30,7 @@ def blur(image_bgr, target_face_location, used_kcf, scale_factor):
     face_roi = image_bgr[top:bottom, left:right]
 
     # Apply a Gaussian blur to the face region
-    blurred_face = cv.GaussianBlur(face_roi, (99, 99), 0)
+    blurred_face = cv.GaussianBlur(face_roi, (999, 999), 0)
 
     # Replace the original image region with the blurred face
     image_bgr[top:bottom, left:right] = blurred_face

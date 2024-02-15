@@ -4,7 +4,8 @@ from PySide6.QtCore import Slot
 import re
 import cv2 as cv
 import os
-import face_id_picture
+import editing_image
+from face_id_picture import get_files
 from multiprocessing import Pool, cpu_count, Queue
 import face_recognition
 
@@ -47,16 +48,14 @@ class Window(QDialog):
         print("Ok button was clicked.")
         global action, overlay, face_to_search_for_encoding, image_to_search_location 
         #Process the image contaning the face to search for
-        print('0')
         face_to_search_for = face_recognition.load_image_file(target_face_location)
-        print("0.5")
         face_to_search_for_encoding = face_recognition.face_encodings(face_to_search_for)[0]
         if action == 2:
             #if selected access the overlay image
-            overlay = cv.imread(overlay_location)          
+            overlay = cv.imread(overlay_image_location)          
         # Call function to get files in directory
-        images_to_search = face_id_picture.get_files(images_to_search_location)
-        with Pool(processes=cpu_count()) as pool:
+        images_to_search = get_files(images_to_search_location)
+        with Pool(processes=(cpu_count()-1)) as pool:
             # Map the image processing function over the images
             results = pool.map(face_recog, images_to_search)
         results = [item for item in results if item is not None]
@@ -224,9 +223,8 @@ def face_recog(image_name):
                         if action == 1:
                             new_image = editing_image.blur(image_bgr, target_face_location, used_kcf, 1)
                         elif action == 2:
-                            new_image = editing_image.replace(image_bgr, overlay, target_face_location, 1)
-                        new_image_name = "." + image_name + ".temp"
-                        cv.imwrite(new_image_name, new_image)
+                            new_image = editing_image.replace(image_bgr, overlay, target_face_location, False, 1)
+                        cv.imwrite(image_name, new_image)
                     return image_name
 
             else:

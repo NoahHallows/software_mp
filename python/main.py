@@ -415,15 +415,15 @@ def face_recog(image_name):
 
             else:
                 # Put progress update to the queue
-                progress_queue.put(1)
+                #progress_queue.put(1)
                 return f"Image {image_name} doesn't match"
         else:
             # Put progress update to the queue
-            progress_queue.put(1)
+            #progress_queue.put(1)
             return f"No faces found in image {image_name}"
     
     except Exception as e:
-        progress_queue.put(1)
+        #progress_queue.put(1)
         return f"An error occurred with image {image_name}: {e}"
 
 # Run the face recognition
