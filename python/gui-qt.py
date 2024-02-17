@@ -1,12 +1,12 @@
 import sys
-from PySide6.QtWidgets import QApplication, QDialog, QDialogButtonBox, QFormLayout, QLineEdit, QVBoxLayout, QFileDialog, QProgressBar, QRadioButton, QPushButton, QLabel, QGridLayout, QListWidget
+from PySide6.QtWidgets import QApplication, QDialog, QDialogButtonBox, QFormLayout, QLineEdit, QVBoxLayout, QFileDialog, QProgressBar, QRadioButton, QPushButton, QLabel, QGridLayout, QListWidget, QCheckBox
 from PySide6.QtCore import Slot
 import re
 import cv2 as cv
 import os
 import editing_image
 from face_id_picture import get_files
-from multiprocessing import Pool, cpu_count, Queue
+from multiprocessing import Pool, cpu_count, Queue, Process
 import face_recognition
 from threading import Thread
 
@@ -15,6 +15,9 @@ images_to_search_location = ""
 overlay_image_location = ""
 action = 1
 progress_queue = Queue()
+dry_run_queue = Queue()
+# Because __init__ cannot return list
+results = []
 
 class Window(QDialog):
     
@@ -25,6 +28,12 @@ class Window(QDialog):
         button = self.sender()
         action = button.option  
 
+    # Logic for getting dry run check box value
+    @Slot()
+    def check_dry_run(self):
+        button = self.sender()
+        dry_run_queue.put(button.checkState())
+        print(dry_run_queue)
 
     # For end screen
     def end_screen(self, results):
@@ -54,27 +63,13 @@ class Window(QDialog):
         print("Ok button was clicked.")
         # Call function to get files in directory
         images_to_search = get_files(images_to_search_location)
-        t1 = Thread(target=Window.start, args=[images_to_search])
+        self.processing = image_processing(images_to_search)
         t = Thread(target=Window.progress_bar_update, args=[self, images_to_search])
+        self.processing.start()
         t.start()
-        t1.start()
         self.close()
         #end_screen(self, results)
     
-    def start(images_to_search):
-        global action, overlay, face_to_search_for_encoding
-        #Process the image contaning the face to search for
-        face_to_search_for = face_recognition.load_image_file(target_face_location)
-        face_to_search_for_encoding = face_recognition.face_encodings(face_to_search_for)[0]
-        if action == 2:
-            #if selected access the overlay image
-            overlay = cv.imread(overlay_image_location)          
-        cpus = cpu_count() - 1
-        with Pool(processes=(cpus)) as pool:
-            # Map the image processing function over the images
-            results = pool.map(face_recog, images_to_search)
-        results = [item for item in results if item is not None]
-        print(results)
 
     @Slot()
     def cancel(self):
@@ -122,12 +117,18 @@ class Window(QDialog):
         replace_button.clicked.connect(self.radio)
         delete_button.clicked.connect(self.radio)
 
+        # Option for a dry run
+        dry_run_button = QCheckBox("Dry run (Don't overwrite images)", self)
+        gridLayout.addWidget(dry_run_button, 7, 0)
+        dry_run_button.clicked.connect(self.check_dry_run)
+
+
         # Select overlay image if applicable
         select_overlay_button = QPushButton("Browse")
         self.select_overlay_text_box = QLineEdit()
-        gridLayout.addWidget(QLabel("Select the overlay image:"), 7, 0)
-        gridLayout.addWidget(self.select_overlay_text_box, 7, 1)
-        gridLayout.addWidget(select_overlay_button, 7, 2)
+        gridLayout.addWidget(QLabel("Select the overlay image:"), 8, 0)
+        gridLayout.addWidget(self.select_overlay_text_box, 8, 1)
+        gridLayout.addWidget(select_overlay_button, 8, 2)
         select_overlay_button.clicked.connect(self.select_overlay_image)
         
         
@@ -205,50 +206,69 @@ class Window(QDialog):
     def display_target_image(self):
         pass
 
-    
-def face_recog(image_name):
-    used_kcf = False
-    try:
-        # Load and run face recognition on the image to search
-        image = face_recognition.load_image_file(image_name)
-        image_encodings = face_recognition.face_encodings(image)
-            
-        if image_encodings:
-            image_encoding = image_encodings[0]
-            # Compare faces
-            results = face_recognition.compare_faces([face_to_search_for_encoding], image_encoding)
-                
-            # Convert image to BGR for OpenCV
-            image_bgr = cv.cvtColor(image, cv.COLOR_RGB2BGR)
-            if results[0]:
-                # Get location of faces in image
-                target_face_locations = face_recognition.face_locations(image)
-                for target_face_location in target_face_locations:
-                    # See if the face is a match for the known face
-                    target_face_encoding = face_recognition.face_encodings(image, [target_face_location])[0]
-                    match = face_recognition.compare_faces([face_to_search_for_encoding], target_face_encoding)
-                    # If it's a match, blur the face
-                    if match[0]:
-                        if action == 1:
-                            new_image = editing_image.blur(image_bgr, target_face_location, used_kcf, 1)
-                        elif action == 2:
-                            new_image = editing_image.replace(image_bgr, overlay, target_face_location, False, 1)
-                        cv.imwrite(image_name, new_image)
-                        progress_queue.put(1)
-                    return image_name
+class image_processing(Process):
+    def __init__(self, images_to_search):
+        super(image_processing, self).__init__()
+        global action, overlay, face_to_search_for_encoding, results
+        #Process the image contaning the face to search for
+        face_to_search_for = face_recognition.load_image_file(target_face_location)
+        face_to_search_for_encoding = face_recognition.face_encodings(face_to_search_for)[0]
+        if action == 2:
+            #if selected access the overlay image
+            overlay = cv.imread(overlay_image_location)          
+        with Pool(processes=cpu_count()) as pool:
+            # Map the image processing function over the images
+            results = pool.map(image_processing.face_recog, images_to_search)
+        results = [item for item in results if item is not None]
 
+
+    def face_recog(image_name):
+        used_kcf = False
+        try:
+            # Load and run face recognition on the image to search
+            image = face_recognition.load_image_file(image_name)
+            image_encodings = face_recognition.face_encodings(image)
+                
+            if image_encodings:
+                image_encoding = image_encodings[0]
+                # Compare faces
+                results = face_recognition.compare_faces([face_to_search_for_encoding], image_encoding)
+                    
+                # Convert image to BGR for OpenCV
+                image_bgr = cv.cvtColor(image, cv.COLOR_RGB2BGR)
+                if results[0]:
+                    # Get location of faces in image
+                    target_face_locations = face_recognition.face_locations(image)
+                    for target_face_location in target_face_locations:
+                        # See if the face is a match for the known face
+                        target_face_encoding = face_recognition.face_encodings(image, [target_face_location])[0]
+                        match = face_recognition.compare_faces([face_to_search_for_encoding], target_face_encoding)
+                        # If it's a match, blur the face
+                        if match[0]:
+                            if action == 1:
+                                new_image = editing_image.blur(image_bgr, target_face_location, used_kcf, 1)
+                            elif action == 2:
+                                new_image = editing_image.replace(image_bgr, overlay, target_face_location, False, 1)
+                            if not dry_run_queue.empty():
+                                queue_result = dry_run_queue.get()
+                                if queue_result == "Qt.CheckState.Unchecked":
+                                    cv.imwrite(image_name, new_image)
+
+                            progress_queue.put(1)
+                        return image_name
+
+                else:
+                    # Put progress update to the queue
+                    progress_queue.put(1)
+                    return f"Image {image_name} doesn't match"
             else:
                 # Put progress update to the queue
                 progress_queue.put(1)
-                return f"Image {image_name} doesn't match"
-        else:
-            # Put progress update to the queue
-            progress_queue.put(1)
-            return f"No faces found in image {image_name}"
+                return f"No faces found in image {image_name}"
 
-    except Exception as e:
-        progress_queue.put(1)
-        return f"An error occurred with image {image_name}: {e}"
+        except Exception as e:
+            progress_queue.put(1)
+            return f"An error occurred with image {image_name}: {e}"
 
 if __name__ == "__main__":
     app = QApplication([])
