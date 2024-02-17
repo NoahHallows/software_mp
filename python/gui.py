@@ -23,7 +23,7 @@ class Window(QDialog):
         if active != True:
             t = Thread(target=Window.update_progress_bar, args=[self])
             t.start()
-            t1 = Thread(target=start)
+            t1 = Thread(target=start, args=[example_array])
             t1.start()
             active = True
 
@@ -32,7 +32,6 @@ class Window(QDialog):
         global active
         for n in range(1, 101):
             self.progress_bar.setValue(n)
-            print(n)
             sleep(0.5)
         active = False
         
@@ -81,12 +80,11 @@ class Window(QDialog):
         
 def example(array):
     sleep(5)
-    print(array)
 
-def start():
+def start(array):
     with Pool(processes=10) as pool:
         # Map the image processing function over the images
-        pool.map(example, example_array)
+        pool.map(example, array)
 
 if __name__ == "__main__":
     app = QApplication([])

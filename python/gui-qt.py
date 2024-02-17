@@ -7,7 +7,7 @@ import os
 import editing_image
 from face_id_picture import get_files
 from time import sleep
-from multiprocessing import cpu_count, Queue, Pool
+from multiprocessing import cpu_count, Queue, Pool, Value
 import face_recognition
 from threading import Thread
 
@@ -15,10 +15,8 @@ target_face_location = ""
 images_to_search_location = ""
 overlay_image_location = ""
 action = 1
-progress_queue = Queue()
-dry_run_queue = Queue()
-# Because __init__ cannot return list
-results = []
+progress = Value('i', 0)
+
 
 class Window(QDialog):
     # Logic for getting radio button value
@@ -28,12 +26,6 @@ class Window(QDialog):
         button = self.sender()
         action = button.option  
 
-    # Logic for getting dry run check box value
-    @Slot()
-    def check_dry_run(self):
-        button = self.sender()
-        dry_run_queue.put(button.checkState())
-        print(dry_run_queue)
 
     # For end screen
     def end_screen(self, results):
@@ -55,22 +47,19 @@ class Window(QDialog):
     def progress_bar_update(self, images_to_search):
         percentage = 0
         while percentage <= 100:
-            #percentage = progress_queue.get() * (100/len(images_to_search))
-            percentage += 1
+            percentage = progress.value * (100/len(images_to_search))
             self.progress_bar.setValue(percentage)
             sleep(0.5)
 
     # For standard buttons
     @Slot()
     def accept(self):
-        print("Ok button was clicked.")
         # Call function to get files in directory
         images_to_search = get_files(images_to_search_location)
         processing_thread = Thread(target=start, args=[images_to_search, action])
         processing_thread.start()
         progress_thread = Thread(target=Window.progress_bar_update, args=[self, images_to_search])
         progress_thread.start()
-        #start(images_to_search)
         #self.close()
         #end_screen(self, results)
     
@@ -121,18 +110,13 @@ class Window(QDialog):
         replace_button.clicked.connect(self.radio)
         delete_button.clicked.connect(self.radio)
 
-        # Option for a dry run
-        dry_run_button = QCheckBox("Dry run (Don't overwrite images)", self)
-        gridLayout.addWidget(dry_run_button, 7, 0)
-        dry_run_button.clicked.connect(self.check_dry_run)
-
 
         # Select overlay image if applicable
         select_overlay_button = QPushButton("Browse")
         self.select_overlay_text_box = QLineEdit()
-        gridLayout.addWidget(QLabel("Select the overlay image:"), 8, 0)
-        gridLayout.addWidget(self.select_overlay_text_box, 8, 1)
-        gridLayout.addWidget(select_overlay_button, 8, 2)
+        gridLayout.addWidget(QLabel("Select the overlay image:"), 7, 0)
+        gridLayout.addWidget(self.select_overlay_text_box, 7, 1)
+        gridLayout.addWidget(select_overlay_button, 7, 2)
         select_overlay_button.clicked.connect(self.select_overlay_image)
         
         
@@ -213,6 +197,7 @@ class Window(QDialog):
 
 def start(images_to_search, action):
     global face_to_search_for_encoding, overlay
+    progress.value = 0
     # Process the image contaning the face to search for
     face_to_search_for = face_recognition.load_image_file(target_face_location)
     face_to_search_for_encoding = face_recognition.face_encodings(face_to_search_for)[0]
@@ -228,9 +213,6 @@ def start(images_to_search, action):
 
 
 def face_recog(image_name):
-    if not progress_queue.empty():
-        progress = progress_queue.get()
-        print(progress)
     try:
         # Load and run face recognition on the image to search
         image = face_recognition.load_image_file(image_name)
@@ -255,26 +237,22 @@ def face_recog(image_name):
                         if action == 1:
                             new_image = editing_image.blur(image_bgr, target_face_location, False, 1)
                         elif action == 2:
-                            new_image = editing_image.replace(image_bgr, overlay, target_face_location, False, 1)
-                        #if not dry_run_queue.empty():
-                        #    queue_result = dry_run_queue.get()
-                        #    if queue_result != "Qt.CheckState.checked":
+                            new_image = editing_image.replace(image_bgr, overlay, target_face_location, False, 1)    
                         cv.imwrite(image_name, new_image)
-
-                        progress_queue.put(progress)
+                        progress.value += 1
                     return image_name
 
             else:
                 # Put progress update to the queue
-                progress_queue.put(progress)
+                progress.value += 1
                 return f"Image {image_name} doesn't match"
         else:
             # Put progress update to the queue
-            progress_queue.put(progress)
+            progress.value += 1
             return f"No faces found in image {image_name}"
 
     except Exception as e:
-        progress_queue.put(progress)
+        progress.value += 1
         return f"An error occurred with image {image_name}: {e}"
 
 
