@@ -2,17 +2,33 @@ import sys
 from PySide6.QtWidgets import QApplication, QDialog, QDialogButtonBox, QFormLayout, QLineEdit, QVBoxLayout, QFileDialog, QProgressBar, QRadioButton
 from PySide6.QtCore import Slot
 from time import sleep
+from threading import Thread
+from multiprocessing import Pool
+
+example_array = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
 
 class Window(QDialog):
     @Slot()
     def checker(self):
         button = self.sender()
         print(f"option {button.option} was")
-        self.close()
 
     @Slot()
     def accept(self):
         print("Ok button was clicked")
+        #self.image_processor = self.update_progress_bar()
+        #self.image_processor.run()
+        t = Thread(target=Window.update_progress_bar, args=[self])
+        t.start()
+        t1 = Thread(target=start)
+        t1.start()
+
+        
+    def update_progress_bar(self):
+        for n in range(1, 101):
+            self.progress_bar.setValue(n)
+            print(n)
+            sleep(0.5)
         
     
     @Slot()
@@ -29,8 +45,8 @@ class Window(QDialog):
         formLayout.addRow("Age:", QLineEdit())
         formLayout.addRow("Job:", QLineEdit())
         formLayout.addRow("Hobbies:", QLineEdit())
-        progress_bar = QProgressBar(value=0)
-        formLayout.addRow("Progress", progress_bar)
+        self.progress_bar = QProgressBar(value=0)
+        formLayout.addRow("Progress", self.progress_bar)
         button = QRadioButton("Button 1", self)
         button.option = 1
         button2 = QRadioButton("Button 2", self)
@@ -45,22 +61,26 @@ class Window(QDialog):
         button2.clicked.connect(self.checker)
         button3.clicked.connect(self.checker)
 
-        fileName = QFileDialog.getOpenFileName(self, ("Open Image"), "/home/noah", ("Image Files (*.png *.jpg *.bmp)"))
-        print(fileName)
+        #fileName = QFileDialog.getOpenFileName(self, ("Open Image"), "/home/noah", ("Image Files (*.png *.jpg *.bmp)"))
+        #print(fileName)
         self.buttons = QDialogButtonBox()
         self.buttons.setStandardButtons(
             QDialogButtonBox.StandardButton.Cancel
             | QDialogButtonBox.StandardButton.Ok
         )
         self.buttons.accepted.connect(self.accept)
-        #self.buttons.rejected.connect(self.reject)
+        self.buttons.rejected.connect(self.reject)
         dialogLayout.addWidget(self.buttons)
         self.setLayout(dialogLayout)
-        n = 0
-        while True:
-            n = n + 1
-            progress_bar.setValue(n)
-            sleep(0.5)
+        
+def example(array):
+    sleep(5)
+    print(array)
+
+def start():
+    with Pool(processes=10) as pool:
+        # Map the image processing function over the images
+        pool.map(example, example_array)
 
 if __name__ == "__main__":
     app = QApplication([])
