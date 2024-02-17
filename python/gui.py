@@ -6,6 +6,7 @@ from threading import Thread
 from multiprocessing import Pool
 
 example_array = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+active = False
 
 class Window(QDialog):
     @Slot()
@@ -15,20 +16,25 @@ class Window(QDialog):
 
     @Slot()
     def accept(self):
+        global active
         print("Ok button was clicked")
         #self.image_processor = self.update_progress_bar()
         #self.image_processor.run()
-        t = Thread(target=Window.update_progress_bar, args=[self])
-        t.start()
-        t1 = Thread(target=start)
-        t1.start()
+        if active != True:
+            t = Thread(target=Window.update_progress_bar, args=[self])
+            t.start()
+            t1 = Thread(target=start)
+            t1.start()
+            active = True
 
         
     def update_progress_bar(self):
+        global active
         for n in range(1, 101):
             self.progress_bar.setValue(n)
             print(n)
             sleep(0.5)
+        active = False
         
     
     @Slot()
