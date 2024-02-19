@@ -1,6 +1,7 @@
 import sys
-from PySide6.QtWidgets import QApplication, QDialog, QDialogButtonBox, QLineEdit, QVBoxLayout, QFileDialog, QProgressBar, QRadioButton, QPushButton, QLabel, QGridLayout, QListWidget, QCheckBox
+from PySide6.QtWidgets import QApplication, QDialog, QDialogButtonBox, QLineEdit, QVBoxLayout, QFileDialog, QProgressBar, QRadioButton, QPushButton, QLabel, QGridLayout, QListWidget, QMessageBox
 from PySide6.QtCore import Slot
+from PySide6.QtGui import QPixmap
 import re
 import cv2 as cv
 import os
@@ -14,7 +15,7 @@ from threading import Thread
 target_face_location = ""
 images_to_search_location = ""
 overlay_image_location = ""
-action = 1
+action = 0
 progress = Value('i', 0)
 
 
@@ -29,11 +30,12 @@ class Window(QDialog):
 
     # For end screen
     def end_screen(self, results):
+        self.close()
         end_grid = QGridLayout()
         x = 0
         y = 0
         for image_name in results:
-            image_name = "." + image_name + ".temp"
+            #image_name = image_name + ".temp"
             image = cv.imread(image_name)
             # Get the dimensions of the image (height, width, number_of_channels)
             height, width, channels = image.shape
@@ -41,7 +43,11 @@ class Window(QDialog):
             new_width = int(round(scale_factor*width, 0))
             resized_image = cv.resize(image, (new_width, 200), interpolation=cv.INTER_AREA)
             imgbytes = cv.imencode(".png", resized_image)[1].tobytes()
-            #image_display =  
+            image_display =  QLabel(self)
+            pixmap = QPixmap(resized_image)
+            image_display.setPixmap(pixmap)
+            end_grid.addWidget(image_display, 0,0)
+
 
     # Logic for progress bar
     def progress_bar_update(self, images_to_search):
@@ -54,14 +60,17 @@ class Window(QDialog):
     # For standard buttons
     @Slot()
     def accept(self):
-        # Call function to get files in directory
-        images_to_search = get_files(images_to_search_location)
-        processing_thread = Thread(target=start, args=[images_to_search, action])
-        processing_thread.start()
-        progress_thread = Thread(target=Window.progress_bar_update, args=[self, images_to_search])
-        progress_thread.start()
-        #self.close()
-        #end_screen(self, results)
+        if images_to_search_location != '' and action != 0 and target_face_location != '': 
+            # Call function to get files in directory
+            images_to_search = get_files(images_to_search_location)
+            processing_thread = Thread(target=start, args=[images_to_search, action])
+            processing_thread.start()
+            progress_thread = Thread(target=Window.progress_bar_update, args=[self, images_to_search])
+            progress_thread.start()
+        else:
+            msgBox = QMessageBox()
+            msgBox.setText("Enter required information")
+            msgBox.exec()
     
 
     @Slot()
@@ -199,8 +208,13 @@ def start(images_to_search, action):
     global face_to_search_for_encoding, overlay
     progress.value = 0
     # Process the image contaning the face to search for
-    face_to_search_for = face_recognition.load_image_file(target_face_location)
-    face_to_search_for_encoding = face_recognition.face_encodings(face_to_search_for)[0]
+    try:
+        face_to_search_for = face_recognition.load_image_file(target_face_location)
+        face_to_search_for_encoding = face_recognition.face_encodings(face_to_search_for)[0]
+    except:
+        msgBox = QMessageBox()
+        msgBox.setText("No face found in image containing target face")
+        msgBox.exec()
     if action == 2:
         #if selected access the overlay image
         overlay = cv.imread(overlay_image_location)          
@@ -208,7 +222,10 @@ def start(images_to_search, action):
         # Map the image processing function over the images
         results = pool.map(face_recog, images_to_search)
     results = [item for item in results if item is not None]
-    print("finished")
+    msgBox = QMessageBox()
+    msgBox.setText("The images have been searched")
+    msgBox.exec()
+    Window.show_end_screen(results=results)
 
 
 
