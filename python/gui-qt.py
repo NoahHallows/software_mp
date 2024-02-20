@@ -60,9 +60,9 @@ class Window(QDialog):
     # For standard buttons
     @Slot()
     def accept(self):
-        if images_to_search_location != '' and action != 0 and target_face_location != '': 
+        images_to_search = get_files(images_to_search_location)
+        if images_to_search_location != '' and action != 0 and target_face_location != '' and images_to_search != []: 
             # Call function to get files in directory
-            images_to_search = get_files(images_to_search_location)
             processing_thread = Thread(target=start, args=[images_to_search, action])
             processing_thread.start()
             progress_thread = Thread(target=Window.progress_bar_update, args=[self, images_to_search])
@@ -168,7 +168,7 @@ class Window(QDialog):
         images_to_search_location = QFileDialog.getExistingDirectory(self, ("Open folder"))
         if images_to_search_location:
             self.select_image_directory_text_box.clear()
-            self.select_image_directory_text_box.setText(str(images_to_search_location))  #('/home/noah/Documents/software_mp/test data/picture_of_me_at_mdda.jpg', 'folder (*.png *.jpg *.bmp)')
+            self.select_image_directory_text_box.setText(str(images_to_search_location))
             # Display images in directory
             try:
                 # Get list of files in folder
@@ -255,7 +255,7 @@ def face_recog(image_name):
                             new_image = editing_image.blur(image_bgr, target_face_location, False, 1)
                         elif action == 2:
                             new_image = editing_image.replace(image_bgr, overlay, target_face_location, False, 1)    
-                        cv.imwrite(image_name, new_image)
+                        #cv.imwrite(image_name, new_image)
                         progress.value += 1
                     return image_name
 
