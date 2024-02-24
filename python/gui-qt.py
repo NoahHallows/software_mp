@@ -25,7 +25,7 @@ class Window(QDialog):
     def radio(self):
         global action
         button = self.sender()
-        action = button.option  
+        action = button.option
 
 
     # For end screen
@@ -71,12 +71,12 @@ class Window(QDialog):
             msgBox = QMessageBox()
             msgBox.setText("Enter required information")
             msgBox.exec()
-    
+
 
     @Slot()
     def cancel(self):
         self.close()
-    
+
     def __init__(self):
         super().__init__(parent=None)
         self.setWindowTitle("Face removal tool")
@@ -127,8 +127,8 @@ class Window(QDialog):
         gridLayout.addWidget(self.select_overlay_text_box, 7, 1)
         gridLayout.addWidget(select_overlay_button, 7, 2)
         select_overlay_button.clicked.connect(self.select_overlay_image)
-        
-        
+
+
         # Add formLayout to dialogLayout
         dialogLayout.addLayout(gridLayout)
 
@@ -146,10 +146,10 @@ class Window(QDialog):
         self.standard_buttons.accepted.connect(self.accept)
         self.standard_buttons.rejected.connect(self.reject)
 
-        
+
         # Set dialogLayout to be the layout of the window
         self.setLayout(dialogLayout)
-        
+
     # Logic for selecting overlay image
     @Slot()
     def select_overlay_image(self):
@@ -196,7 +196,7 @@ class Window(QDialog):
             # Use regular expression to find the file path
             target_face_location = re.search(r"'(.*?)'", str(target_face_location_untrimmed)).group(1)
             self.target_image_text_box.setText(target_face_location)
-    
+
 
 
     # Display selected target image
@@ -217,7 +217,7 @@ def start(images_to_search, action):
         msgBox.exec()
     if action == 2:
         #if selected access the overlay image
-        overlay = cv.imread(overlay_image_location)          
+        overlay = cv.imread(overlay_image_location)
     with Pool(processes=cpu_count()) as pool:
         # Map the image processing function over the images
         results = pool.map(face_recog, images_to_search)
@@ -234,12 +234,10 @@ def face_recog(image_name):
         # Load and run face recognition on the image to search
         image = face_recognition.load_image_file(image_name)
         image_encodings = face_recognition.face_encodings(image)
-                
         if image_encodings:
             image_encoding = image_encodings[0]
             # Compare faces
             results = face_recognition.compare_faces([face_to_search_for_encoding], image_encoding)
-                    
             # Convert image to BGR for OpenCV
             image_bgr = cv.cvtColor(image, cv.COLOR_RGB2BGR)
             if results[0]:
@@ -254,7 +252,7 @@ def face_recog(image_name):
                         if action == 1:
                             new_image = editing_image.blur(image_bgr, target_face_location, False, 1)
                         elif action == 2:
-                            new_image = editing_image.replace(image_bgr, overlay, target_face_location, False, 1)    
+                            new_image = editing_image.replace(image_bgr, overlay, target_face_location, False, 1)
                         #cv.imwrite(image_name, new_image)
                         progress.value += 1
                     return image_name
