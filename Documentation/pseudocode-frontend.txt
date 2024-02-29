@@ -1,0 +1,17 @@
+BEGIN Automatic_removal_of_face_frontend
+
+  DISPLAY("Select the image containing the face to search for: ")
+  face_to_search_for_location <- INPUT()
+  DISPLAY("Select the directory containing the images to search: ")
+  images_to_search_location <- INPUT()
+  DISPLAY(“What sould the program do to matching faces: “)
+  action <- INPUT.RADIOBUTTON{
+	"Blur matching faces"
+	"Replace matching faces"
+	"Delete images containg matching faces"
+  }
+  WITH Pool(processes=cpu_count()) as pool
+    results = pool.map(
+  DISPLAY(“Finished”)
+    
+END Automatic_removal_of_face_frontend
