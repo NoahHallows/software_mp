@@ -32,8 +32,6 @@ class Window(QDialog):
     def end_screen(self, results):
         self.close()
         end_grid = QGridLayout()
-        x = 0
-        y = 0
         for image_name in results:
             #image_name = image_name + ".temp"
             image = cv.imread(image_name)
@@ -61,7 +59,7 @@ class Window(QDialog):
     @Slot()
     def accept(self):
         images_to_search = get_files(images_to_search_location)
-        if images_to_search_location != '' and action != 0 and target_face_location != '' and images_to_search != []: 
+        if images_to_search_location != '' and action != 0 and target_face_location != '' and images_to_search != []:
             # Call function to get files in directory
             processing_thread = Thread(target=start, args=[images_to_search, action])
             processing_thread.start()
@@ -242,11 +240,11 @@ def face_recog(image_name):
             image_bgr = cv.cvtColor(image, cv.COLOR_RGB2BGR)
             if results[0]:
                 # Get location of faces in image
-                target_face_locations = face_recognition.face_locations(image)
-                for target_face_location in target_face_locations:
+                face_locations = face_recognition.face_locations(image)
+                for face_location in face_locations:
                     # See if the face is a match for the known face
-                    target_face_encoding = face_recognition.face_encodings(image, [target_face_location])[0]
-                    match = face_recognition.compare_faces([face_to_search_for_encoding], target_face_encoding)
+                    face_encoding = face_recognition.face_encodings(image, [face_location])[0]
+                    match = face_recognition.compare_faces([face_to_search_for_encoding], face_encoding)
                     # If it's a match, blur the face
                     if match[0]:
                         if action == 1:
