@@ -1,6 +1,5 @@
 face-recognition
 opencv-contrib-python
 dlib
-#tensorflow[and-cuda]
-#deepface
 PySide6
+pyinstaller
