@@ -100,7 +100,7 @@ def replace(background, overlay, target_face_location, used_kcf, scale_factor):
     else:
         # Handle the invalid size case, e.g., by skipping the resizing or setting a default size
         print(f"Invalid size for resize operation: width={width}, height={height}")
-        return background 
+        return background
 
     # Check if overlay image has an alpha channel (transparency)
     if overlay_resized.shape[2] == 4:
@@ -145,12 +145,12 @@ def __init__():
             video_pre_recorded()
         else:
             video_live()
-    
+
     if video == 2:
         # Get list of all files in the directory specified
         images_to_search = get_files(images_to_search_location)
         for dir in directories:
-            images_to_search.append(get_files(dir))                
+            images_to_search.append(get_files(dir))
 
         with Pool(processes=multiprocessing.cpu_count()) as pool:
             # Map the image processing function over the images
@@ -162,7 +162,7 @@ def __init__():
         display = input("Do you want to view the images that match? (y/n): ")
         if display.lower() == "y":
             display_image(results)
-    
+
 def get_files(images_to_search_location):
     global directories
     images_to_search = os.listdir(images_to_search_location)
@@ -279,7 +279,7 @@ def video_live():
                                 new_frame = blur(frame, target_face_location, used_kcf, 1)
                             elif action == 2:
                                 new_frame = replace(frame, overlay, target_face_location, used_kcf, 1)
-        
+
 
         except Exception as e:
             print(f"An error occurred with frame: {e}")
@@ -291,7 +291,7 @@ def video_live():
             break
     # When everything done, release the capture
     cap.release()
-    cv.destroyAllWindows() 
+    cv.destroyAllWindows()
 
 def video_pre_recorded():
     cap = cv.VideoCapture(video_file_location)
@@ -327,7 +327,7 @@ def video_pre_recorded():
                     for target_face_location in target_face_locations:
                         # See if the face is a match for the known face
                         target_face_encoding = face_recognition.face_encodings(frame, [target_face_location])[0]
-                        match = face_recognition.compare_faces([face_to_search_for_encoding], target_face_encoding)                        
+                        match = face_recognition.compare_faces([face_to_search_for_encoding], target_face_encoding)
                         if match[0]:
                             if action == 1:
                                 new_frame = blur(frame, target_face_location, used_kcf, 1)
@@ -337,7 +337,7 @@ def video_pre_recorded():
                     new_frame = frame
             else:
                 new_frame = frame
-        
+
 
         except Exception as e:
             print(f"An error occurred with frame: {e}")
@@ -352,7 +352,7 @@ def video_pre_recorded():
     # When everything done, release the capture
     cap.release()
     out.release()
-    cv.destroyAllWindows()       
+    cv.destroyAllWindows()
 
 def display_image(images_that_match):
     for image_name in images_that_match:
@@ -391,7 +391,6 @@ def face_recog(image_name):
             image_encoding = image_encodings[0]
             # Compare faces
             results = face_recognition.compare_faces([face_to_search_for_encoding], image_encoding)
-                    
             # Convert image to BGR for OpenCV
             image_bgr = cv.cvtColor(image, cv.COLOR_RGB2BGR)
             if results[0]:
@@ -421,7 +420,7 @@ def face_recog(image_name):
             # Put progress update to the queue
             #progress_queue.put(1)
             return f"No faces found in image {image_name}"
-    
+
     except Exception as e:
         #progress_queue.put(1)
         return f"An error occurred with image {image_name}: {e}"

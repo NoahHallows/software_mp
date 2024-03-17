@@ -6,24 +6,21 @@ import re
 import cv2 as cv
 import os
 from time import sleep
-from multiprocessing import cpu_count, Queue, Pool, Value
-from threading import Thread
+from multiprocessing import cpu_count, Queue, Pool, Value, Process, Event
+import pathlib
+import face_recognition
 
-target_face_location = ""
-images_to_search_location = ""
-overlay_image_location = ""
-action = 0
 progress = Value('i', 0)
-
+images_to_search = []
+event = Event()
+data_queue = Queue()
 
 class Window(QDialog):
     # Logic for getting radio button value
     @Slot()
     def radio(self):
-        global action
         button = self.sender()
-        action = button.option
-
+        self.action = button.option
 
     # For end screen
     def end_screen(self, results):
@@ -42,7 +39,15 @@ class Window(QDialog):
             pixmap = QPixmap(resized_image)
             image_display.setPixmap(pixmap)
             end_grid.addWidget(image_display, 0,0)
-
+    # Logic for selecting target image
+    @Slot()
+    def select_target_face(self):
+        target_face_location_untrimmed = QFileDialog.getOpenFileName(self, ("Open image"), "", ("Image (*.png *.jpg *.bmp)"))
+        if target_face_location_untrimmed:
+            self.target_image_text_box.clear()
+            # Use regular expression to find the file path
+            self.target_face_location = re.search(r"'(.*?)'", str(target_face_location_untrimmed)).group(1)
+            self.target_image_text_box.setText(self.target_face_location)
 
     # Logic for progress bar
     def progress_bar_update(self, images_to_search):
@@ -55,13 +60,13 @@ class Window(QDialog):
     # For standard buttons
     @Slot()
     def accept(self):
-        images_to_search = get_files(images_to_search_location)
-        if images_to_search_location != '' and action != 0 and target_face_location != '' and images_to_search != []:
-            # Call function to get files in directory
-            processing_thread = Thread(target=start, args=[images_to_search, action])
-            processing_thread.start()
-            progress_thread = Thread(target=Window.progress_bar_update, args=[self, images_to_search])
-            progress_thread.start()
+        # Input checking
+        if self.images_to_search_location != '' and self.action != 0 and self.target_face_location != '':
+            images_to_search = get_files(self.images_to_search_location)
+            # Use of queues to transfer data from frontend to backend
+            data_queue.put([self.action, self.target_face_location, self.images_to_search, self.overlay_image_location])
+            # Tell the backend to run
+            event.set()
         else:
             msgBox = QMessageBox()
             msgBox.setText("Enter required information")
@@ -73,6 +78,8 @@ class Window(QDialog):
         self.close()
 
     def __init__(self):
+        # Set overlay_image_location to none in case it's not applicable
+        self.overlay_image_location = None
         super().__init__(parent=None)
         self.setWindowTitle("Face removal tool v0.8")
         dialogLayout = QVBoxLayout()
@@ -148,158 +155,134 @@ class Window(QDialog):
     # Logic for selecting overlay image
     @Slot()
     def select_overlay_image(self):
-        global overlay_image_location
         overlay_image_location_untrimmed = QFileDialog.getOpenFileName(self, ("Open image"), "", ("Image (*.png *.jpg *.bmp)"))
         if overlay_image_location_untrimmed:
             self.select_overlay_text_box.clear()
             # Use regular expression to find the file path
-            overlay_image_location = re.search(r"'(.*?)'", str(overlay_image_location_untrimmed)).group(1)
+            self.overlay_image_location = re.search(r"'(.*?)'", str(overlay_image_location_untrimmed)).group(1)
             self.select_overlay_text_box.setText(overlay_image_location)
 
     # Logic for selecting image directory
     @Slot()
     def select_image_directory(self):
-        global images_to_search_location
-        images_to_search_location = QFileDialog.getExistingDirectory(self, ("Open folder"))
-        if images_to_search_location:
+        self.images_to_search_location = QFileDialog.getExistingDirectory(self, ("Open folder"))
+        if self.images_to_search_location:
             self.select_image_directory_text_box.clear()
-            self.select_image_directory_text_box.setText(str(images_to_search_location))
+            self.select_image_directory_text_box.setText(str(self.images_to_search_location))
             # Display images in directory
-            try:
-                # Get list of files in folder
-                file_list = os.listdir(images_to_search_location)
-            except:
-                file_list = []
-
-            fnames = [
-                f
-                for f in file_list
-                if os.path.isfile(os.path.join(images_to_search_location, f))
-                and f.lower().endswith((".png", ".gif", '.jpg'))
-            ]
-            for image in fnames:
+            self.images_to_search = get_files(self.images_to_search_location)
+            for image in images_to_search:
                 self.image_list_box.addItem(image)
 
 
-    # Logic for selecting target image
-    @Slot()
-    def select_target_face(self):
-        global target_face_location
-        target_face_location_untrimmed = QFileDialog.getOpenFileName(self, ("Open image"), "", ("Image (*.png *.jpg *.bmp)"))
-        if target_face_location_untrimmed:
-            self.target_image_text_box.clear()
-            # Use regular expression to find the file path
-            target_face_location = re.search(r"'(.*?)'", str(target_face_location_untrimmed)).group(1)
-            self.target_image_text_box.setText(target_face_location)
+class backend:
+
+    def __init__(self):
+        # Wait for trigger
+        event.wait()
+        # Get input data
+        input_data = data_queue.get()
+        self.action = input_data[0]
+        self.target_face_location = input_data[1]
+        self.images_to_search = input_data[2]
+        self.overlay_image_location = input_data[3]
+        # Call function to spawn processing threads
+        self.start(self.images_to_search, self.action)
+
+    def start(self, images_to_search, action):
+        progress.value = 0
+        # Process the image contaning the face to search for
+        try:
+            face_to_search_for = face_recognition.load_image_file(self.target_face_location)
+            self.face_to_search_for_encoding = face_recognition.face_encodings(face_to_search_for)[0]
+        except Exception as e:
+            print(f"Error {e}")
+            #msgBox = QMessageBox()
+            #msgBox.setText(f"No face found in image containing target face\n{e}")
+            #msgBox.exec()
+        if action == 2:
+            #if selected access the overlay image
+            self.overlay = cv.imread(self.overlay_image_location)
+        with Pool(processes=cpu_count()) as pool:
+            # Map the image processing function over the images
+            results = pool.map(self.face_recog, images_to_search)
+        results = [item for item in results if item is not None]
+        print(results)
+        #msgBox = QMessageBox()
+        #msgBox.setText("The images have been searched")
+        #msgBox.exec()
+        #Window.show_end_screen(results=results)
 
 
 
+    def face_recog(self, image_name):
+        try:
+            # Load and run face recognition on the image to search
+            image = face_recognition.load_image_file(image_name)
+            image_encodings = face_recognition.face_encodings(image)
+            if image_encodings:
+                image_encoding = image_encodings[0]
+                # Compare faces
+                results = face_recognition.compare_faces([self.face_to_search_for_encoding], image_encoding)
+                # Convert image to BGR for OpenCV
+                image_bgr = cv.cvtColor(image, cv.COLOR_RGB2BGR)
+                if results[0]:
+                    # Get location of faces in image
+                    face_locations = face_recognition.face_locations(image)
+                    for face_location in face_locations:
+                        # See if the face is a match for the known face
+                        face_encoding = face_recognition.face_encodings(image, [face_location])[0]
+                        match = face_recognition.compare_faces([self.face_to_search_for_encoding], face_encoding)
+                        # If it's a match, blur the face
+                        if match[0]:
+                            if self.action == 1:
+                                new_image = editing_image.blur(image_bgr, face_location, 1)
+                            elif self.action == 2:
+                                new_image = editing_image.replace(image_bgr, self.overlay, face_location, 1)
+                            elif self.action == 3:
+                                os.remove(image_name)
+                            cv.imwrite(image_name, new_image)
+                            #progress.value += 1
+                        return image_name
 
-
-def start(images_to_search, action):
-    global face_to_search_for_encoding, overlay
-    progress.value = 0
-    # Process the image contaning the face to search for
-    try:
-        face_to_search_for = face_recognition.load_image_file(target_face_location)
-        face_to_search_for_encoding = face_recognition.face_encodings(face_to_search_for)[0]
-    except:
-        msgBox = QMessageBox()
-        msgBox.setText("No face found in image containing target face")
-        msgBox.exec()
-    if action == 2:
-        #if selected access the overlay image
-        overlay = cv.imread(overlay_image_location)
-    with Pool(processes=cpu_count()) as pool:
-        # Map the image processing function over the images
-        results = pool.map(face_recog, images_to_search)
-    results = [item for item in results if item is not None]
-    msgBox = QMessageBox()
-    msgBox.setText("The images have been searched")
-    msgBox.exec()
-    Window.show_end_screen(results=results)
-
-
-
-def face_recog(image_name):
-    try:
-        # Load and run face recognition on the image to search
-        image = face_recognition.load_image_file(image_name)
-        image_encodings = face_recognition.face_encodings(image)
-        if image_encodings:
-            image_encoding = image_encodings[0]
-            # Compare faces
-            results = face_recognition.compare_faces([face_to_search_for_encoding], image_encoding)
-            # Convert image to BGR for OpenCV
-            image_bgr = cv.cvtColor(image, cv.COLOR_RGB2BGR)
-            if results[0]:
-                # Get location of faces in image
-                face_locations = face_recognition.face_locations(image)
-                for face_location in face_locations:
-                    # See if the face is a match for the known face
-                    face_encoding = face_recognition.face_encodings(image, [face_location])[0]
-                    match = face_recognition.compare_faces([face_to_search_for_encoding], face_encoding)
-                    # If it's a match, blur the face
-                    if match[0]:
-                        if action == 1:
-                            new_image = editing_image.blur(image_bgr, target_face_location, False, 1)
-                        elif action == 2:
-                            new_image = editing_image.replace(image_bgr, overlay, target_face_location, False, 1)
-                        #cv.imwrite(image_name, new_image)
-                        progress.value += 1
-                    return image_name
-
+                else:
+                    # Put progress update to the queue
+                    #progress.value += 1
+                    return f"Image {image_name} doesn't match"
             else:
                 # Put progress update to the queue
-                progress.value += 1
-                return f"Image {image_name} doesn't match"
-        else:
-            # Put progress update to the queue
-            progress.value += 1
-            return f"No faces found in image {image_name}"
+                #progress.value += 1
+                return f"No faces found in image {image_name}"
 
-    except Exception as e:
-        progress.value += 1
-        return f"An error occurred with image {image_name}: {e}"
+        except Exception as e:
+            #progress.value += 1
+            return f"An error occurred with image {image_name}: {e}"
+
 
 def get_files(images_to_search_location):
     global images_to_search
-    images_to_search = []
-    directories = []
-
-    for item in os.listdir(images_to_search_location):
-        item_path = os.path.join(images_to_search_location, item)
-
-        if os.path.isdir(item_path):
-            directories.append(item_path)
-            images_to_search.extend(get_files(item_path))  # Recursively get files from subdirectories
-        else:
-            images_to_search.append(item_path)
-
-    return images_to_search
+    for file in pathlib.Path(images_to_search_location).rglob("*.jpg"):
+        images_to_search.append(str(file))
+    for file in pathlib.Path(images_to_search_location).rglob("*.JPG"):
+        images_to_search.append(str(file))
+    for file in pathlib.Path(images_to_search_location).rglob("*.png"):
+        images_to_search.append(str(file))
+    return list(images_to_search)
 
 class editing_image():
     #EDITING IMAGES
 
-    def blur(image_bgr, target_face_location, used_kcf, scale_factor):
+    def blur(image_bgr, target_face_location, scale_factor):
         # Unpack the location
-        if used_kcf == False:
-            top, right, bottom, left = target_face_location
-            # Scale face_location coordinates up to the original image size
-            top = int(top / scale_factor)
-            right = int(right / scale_factor)
-            bottom = int(bottom / scale_factor)
-            left = int(left / scale_factor)
-            # Calculate the width and height of the bounding box
-            width = right - left
-            height = bottom - top
-        #Because KCF returns (x, y, width, height)
-        elif used_kcf == True:
-            x, y, width, height = target_face_location
-            top = y
-            left = x
-            bottom = y + height
-            right = x + width
+        top, right, bottom, left = target_face_location
+        # Scale face_location coordinates up to the original image size
+        top = int(top / scale_factor)
+        right = int(right / scale_factor)
+        bottom = int(bottom / scale_factor)
+        left = int(left / scale_factor)
+        # Calculate the width and height of the bounding box
+        width = right - left
+        height = bottom - top
         # Increase the region slightly to make sure the entire face is covered
         top = max(top - 10, 0)
         right = min(right + 10, image_bgr.shape[1])
@@ -317,26 +300,16 @@ class editing_image():
 
         return image_bgr
 
-    def replace(background, overlay, target_face_location, used_kcf, scale_factor):
+    def replace(background, overlay, target_face_location, scale_factor):
         # Unpack the location
-        if used_kcf == False:
-            top, right, bottom, left = target_face_location
-            # Scale face_location coordinates up to the original image size
-            top = int(top / scale_factor)
-            right = int(right / scale_factor)
-            bottom = int(bottom / scale_factor)
-            left = int(left / scale_factor)
-            # Calculate the width and height of the bounding box
-            width = right - left
-            height = bottom - top
-        #Because KCF returns (x, y, width, height)
-        elif used_kcf == True:
-            x, y, width, height = target_face_location
-            top = y
-            left = x
-            bottom = y + height
-            right = x + width
-
+        top, right, bottom, left = target_face_location
+        # Scale face_location coordinates up to the original image size
+        top = int(top / scale_factor)
+        right = int(right / scale_factor)
+        bottom = int(bottom / scale_factor)
+        left = int(left / scale_factor)
+        # Calculate the width and height of the bounding box
+        width = right - left
         # Expand the bounding box by the constant value
         top = max(0, top - 10)
         bottom = min(background.shape[0], bottom + 10)
@@ -351,7 +324,7 @@ class editing_image():
         else:
             # Handle the invalid size case, e.g., by skipping the resizing or setting a default size
             print(f"Invalid size for resize operation: width={width}, height={height}")
-            return background 
+            return background
 
         # Check if overlay image has an alpha channel (transparency)
         if overlay_resized.shape[2] == 4:
@@ -372,12 +345,22 @@ class editing_image():
         return background
 
 
-if __name__ == "__main__":
-    main()
 
 
-def main():
+def ui_start():
     app = QApplication([])
     window = Window()
     window.show()
     sys.exit(app.exec())
+
+def main():
+    # creating processes
+    frontend_thread = Process(target=ui_start)
+    backend_thread = Process(target=backend)
+    frontend_thread.start()
+    backend_thread.start()
+    frontend_thread.join()
+    backend_thread.join()
+
+if __name__ == "__main__":
+    main()
