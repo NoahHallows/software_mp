@@ -9,6 +9,7 @@ from time import sleep
 from multiprocessing import cpu_count, Queue, Pool, Value, Process, Event
 import pathlib
 import face_recognition
+import concurrent.futures
 
 progress = Value('i', 0)
 images_to_search = []
@@ -62,7 +63,10 @@ class Window(QDialog):
     def accept(self):
         # Input checking
         if self.images_to_search_location != '' and self.action != 0 and self.target_face_location != '':
-            images_to_search = get_files(self.images_to_search_location)
+            # Setup worker to update progress bar
+            progress_worker = concurrent.futures.ThreadPoolExecutor(max_workers=1)
+            progress_worker.submit(self.progress_bar_update, self.images_to_search)
+            #images_to_search = get_files(self.images_to_search_location)
             # Use of queues to transfer data from frontend to backend
             data_queue.put([self.action, self.target_face_location, self.images_to_search, self.overlay_image_location])
             # Tell the backend to run
@@ -242,20 +246,20 @@ class backend:
                             elif self.action == 3:
                                 os.remove(image_name)
                             cv.imwrite(image_name, new_image)
-                            #progress.value += 1
+                            progress.value += 1
                         return image_name
 
                 else:
                     # Put progress update to the queue
-                    #progress.value += 1
+                    progress.value += 1
                     return f"Image {image_name} doesn't match"
             else:
                 # Put progress update to the queue
-                #progress.value += 1
+                progress.value += 1
                 return f"No faces found in image {image_name}"
 
         except Exception as e:
-            #progress.value += 1
+            progress.value += 1
             return f"An error occurred with image {image_name}: {e}"
 
 
