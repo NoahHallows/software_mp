@@ -218,7 +218,6 @@ class backend:
             # Map the image processing function over the images
             results = pool.map(self.face_recog, images_to_search)
         results = [item for item in results if item is not None]
-        print(results)
         msgBox = QMessageBox()
         msgBox.setText("The images have been searched")
         msgBox.exec()
@@ -247,6 +246,7 @@ class backend:
                         # If it's a match, blur the face
                         if match[0]:
                             if self.action == 1:
+                                # Call editing image class blur function
                                 new_image = editing_image.blur(image_bgr, face_location, 1)
                             elif self.action == 2:
                                 new_image = editing_image.replace(image_bgr, self.overlay, face_location, 1)
