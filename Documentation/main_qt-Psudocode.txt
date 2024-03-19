@@ -17,7 +17,6 @@ data_queue <- Queue()
 
 CLASS Window(QDialog):
     # Logic for getting radio button value
-    @Slot()
     FUNCTION radio(self):
         button <-  sender()
          action <- button.option
@@ -25,10 +24,8 @@ CLASS Window(QDialog):
     ENDFUNCTION
 
     FUNCTION end_screen(self, results):
-         close()
         end_grid <- QGridLayout()
         FOR image_name IN results:
-            #image_name <- image_name + ".temp"
             image <- cv.imread(image_name)
             # Get the dimensions of the image (height, width, number_of_channels)
             height, width, channels <- image.shape
@@ -81,44 +78,36 @@ CLASS Window(QDialog):
             event.set()
         ELSE:
             msgBox <- QMessageBox()
-                                             ENDFOR
             msgBox.exec()
         ENDIF
     ENDFUNCTION
 
-    @Slot()
-    FUNCTION cancel(self):
-         close()
-    ENDFUNCTION
-
     FUNCTION __init__(self):
         # Set overlay_image_location to none in case it's not applicable
-         overlay_image_location <- None
+        overlay_image_location <- None
         super().__init__(parent=None)
-         setWindowTitle("Face removal tool v0.8")
+        setWindowTitle("Face removal tool v0.8")
         dialogLayout <- QVBoxLayout()
         #formLayout <- QFormLayout()
-         ENDFOR
         gridLayout <- QGridLayout()
         # Selecting target face image
         target_image_button <- QPushButton("Browse")
-         target_image_text_box <- QLineEdit()
-         target_image_text_box.setReadOnly(True)
+        target_image_text_box <- QLineEdit()
+        target_image_text_box.setReadOnly(True)
         gridLayout.addWidget(QLabel("Select the image containing the face to search for:"), 0, 0)
-                                                                                    ENDFOR
         gridLayout.addWidget( target_image_text_box, 0, 1)
         gridLayout.addWidget(target_image_button, 0, 2)
         target_image_button.clicked.connect( select_target_face)
         #Selecting image directory
         select_image_directory_button <- QPushButton("Browse")
-         select_image_directory_text_box <- QLineEdit()
-         select_image_directory_text_box.setReadOnly(True)
+        select_image_directory_text_box <- QLineEdit()
+        select_image_directory_text_box.setReadOnly(True)
         gridLayout.addWidget(QLabel("Select the directory contining images to search:"), 1, 0)
         gridLayout.addWidget( select_image_directory_text_box, 1, 1)
         gridLayout.addWidget(select_image_directory_button, 1, 2)
         select_image_directory_button.clicked.connect( select_image_directory)
         # List images
-         image_list_box <- QListWidget()
+        image_list_box <- QListWidget()
         gridLayout.addWidget( image_list_box, 2, 0, 1, 2)
         # Select action option
         blur_button <- QRadioButton("Blur matching faces", self)
@@ -138,8 +127,8 @@ CLASS Window(QDialog):
         delete_button.clicked.connect( radio)
         # Select overlay image IF applicable
         select_overlay_button <- QPushButton("Browse")
-         select_overlay_text_box <- QLineEdit()
-         select_overlay_text_box.setReadOnly(True)
+        select_overlay_text_box <- QLineEdit()
+        select_overlay_text_box.setReadOnly(True)
         gridLayout.addWidget(QLabel("Select the overlay image:"), 7, 0)
         gridLayout.addWidget( select_overlay_text_box, 7, 1)
         gridLayout.addWidget(select_overlay_button, 7, 2)
@@ -147,17 +136,17 @@ CLASS Window(QDialog):
         # Add formLayout to dialogLayout
         dialogLayout.addLayout(gridLayout)
         # Progress bar
-         progress_bar <- QProgressBar()
+        progress_bar <- QProgressBar()
         dialogLayout.addWidget( progress_bar)
         # Add standard buttons
-         standard_buttons <- QDialogButtonBox(QDialogButtonBox.Ok
+        standard_buttons <- QDialogButtonBox(QDialogButtonBox.Ok
                              = QDialogButtonBox.Cancel)
         dialogLayout.addWidget( standard_buttons)
         # Connect the accepted AND rejected signals to respective methods
-         standard_buttons.accepted.connect( accept)
-         standard_buttons.rejected.connect( reject)
+        standard_buttons.accepted.connect( accept)
+        standard_buttons.rejected.connect( reject)
         # Set dialogLayout to be the layout of the window
-         setLayout(dialogLayout)
+        SetLayout(dialogLayout)
     # Logic for selecting overlay image
     ENDFUNCTION
 
@@ -173,7 +162,6 @@ CLASS Window(QDialog):
     # Logic for selecting image directory
     ENDFUNCTION
 
-            ENDFOR
     @Slot()
     FUNCTION select_image_directory(self):
          images_to_search_location <- QFileDialog.getExistingDirectory(self, ("Open folder"))
@@ -190,35 +178,29 @@ CLASS Window(QDialog):
 
 ENDCLASS
 
-            ENDFOR
 CLASS backend:
     FUNCTION __init__(self):
         # Create backend windows for popups
-                                 ENDFOR
         app <- QApplication([])
         window <- Window()
         # Wait for trigger
-               ENDFOR
         event.wait()
         # Get input data
         input_data <- data_queue.get()
-         action <- input_data[0]
-         target_face_location <- input_data[1]
-         images_to_search <- input_data[2]
-         overlay_image_location <- input_data[3]
+        action <- input_data[0]
+        target_face_location <- input_data[1]
+        images_to_search <- input_data[2]
+        overlay_image_location <- input_data[3]
         # Call function to spawn processing threads
-         start( images_to_search,  action)
+        start( images_to_search,  action)
     ENDFUNCTION
 
     FUNCTION start(self, images_to_search, action):
         progress.value <- 0
         # Process the image contaning the face to search fOR
-                                                         ENDFOR
         TRY:
             face_to_search_for <- face_recognition.load_image_file( target_face_location)
-                           ENDFOR
              face_to_search_for_encoding <- face_recognition.face_encodings(face_to_search_for)[0]
-                                ENDFOR
         EXCEPT Exception as e:
             OUTPUT f"Error {e}"
             msgBox <- QMessageBox()
@@ -258,12 +240,12 @@ CLASS backend:
                         match <- face_recognition.compare_faces([ face_to_search_for_encoding], face_encoding)
                         # If it's a match, blur the face
                         IF match[0]:
-                            IF  action = 1:
+                            IF action = 1:
                                 # Call editing image CLASS blur function
                                 new_image <- editing_image.blur(image_bgr, face_location, 1)
-                            ELSEIF  action = 2:
+                            ELSEIF action = 2:
                                 new_image <- editing_image.replace(image_bgr,  overlay, face_location, 1)
-                            ELSEIF  action = 3:
+                            ELSEIF action = 3:
                                 os.remove(image_name)
                             ENDIF
                             cv.imwrite(image_name, new_image)
