@@ -6,7 +6,7 @@ import re
 import cv2 as cv
 import os
 from time import sleep
-from multiprocessing import cpu_count, Queue, Pool, Value, Process, Event
+from multiprocessing import cpu_count, Queue, Pool, Value, Process, Event, freeze_support
 import pathlib
 import face_recognition
 import concurrent.futures
@@ -47,6 +47,7 @@ class Window(QDialog):
         if target_face_location_untrimmed:
             self.target_image_text_box.clear()
             # Use regular expression to find the file path
+            # THIS STRING PROCESSING IS A STARDARD ALGORITHM
             self.target_face_location = re.search(r"'(.*?)'", str(target_face_location_untrimmed)).group(1)
             self.target_image_text_box.setText(self.target_face_location)
 
@@ -92,6 +93,7 @@ class Window(QDialog):
         # Selecting target face image
         target_image_button = QPushButton("Browse")
         self.target_image_text_box = QLineEdit()
+        self.target_image_text_box.setReadOnly(True)
         gridLayout.addWidget(QLabel("Select the image containing the face to search for:"), 0, 0)
         gridLayout.addWidget(self.target_image_text_box, 0, 1)
         gridLayout.addWidget(target_image_button, 0, 2)
@@ -99,6 +101,7 @@ class Window(QDialog):
         #Selecting image directory
         select_image_directory_button = QPushButton("Browse")
         self.select_image_directory_text_box = QLineEdit()
+        self.select_image_directory_text_box.setReadOnly(True)
         gridLayout.addWidget(QLabel("Select the directory contining images to search:"), 1, 0)
         gridLayout.addWidget(self.select_image_directory_text_box, 1, 1)
         gridLayout.addWidget(select_image_directory_button, 1, 2)
@@ -129,6 +132,7 @@ class Window(QDialog):
         # Select overlay image if applicable
         select_overlay_button = QPushButton("Browse")
         self.select_overlay_text_box = QLineEdit()
+        self.select_overlay_text_box.setReadOnly(True)
         gridLayout.addWidget(QLabel("Select the overlay image:"), 7, 0)
         gridLayout.addWidget(self.select_overlay_text_box, 7, 1)
         gridLayout.addWidget(select_overlay_button, 7, 2)
@@ -182,6 +186,9 @@ class Window(QDialog):
 class backend:
 
     def __init__(self):
+        # Create backend windows for popups
+        app = QApplication([])
+        window = Window()
         # Wait for trigger
         event.wait()
         # Get input data
@@ -201,9 +208,9 @@ class backend:
             self.face_to_search_for_encoding = face_recognition.face_encodings(face_to_search_for)[0]
         except Exception as e:
             print(f"Error {e}")
-            #msgBox = QMessageBox()
-            #msgBox.setText(f"No face found in image containing target face\n{e}")
-            #msgBox.exec()
+            msgBox = QMessageBox()
+            msgBox.setText(f"No face found in image containing target face\n{e}")
+            msgBox.exec()
         if action == 2:
             #if selected access the overlay image
             self.overlay = cv.imread(self.overlay_image_location)
@@ -212,9 +219,9 @@ class backend:
             results = pool.map(self.face_recog, images_to_search)
         results = [item for item in results if item is not None]
         print(results)
-        #msgBox = QMessageBox()
-        #msgBox.setText("The images have been searched")
-        #msgBox.exec()
+        msgBox = QMessageBox()
+        msgBox.setText("The images have been searched")
+        msgBox.exec()
         #Window.show_end_screen(results=results)
 
 
@@ -314,6 +321,7 @@ class editing_image():
         left = int(left / scale_factor)
         # Calculate the width and height of the bounding box
         width = right - left
+        height = botton - top
         # Expand the bounding box by the constant value
         top = max(0, top - 10)
         bottom = min(background.shape[0], bottom + 10)
@@ -358,6 +366,8 @@ def ui_start():
     sys.exit(app.exec())
 
 def main():
+    # For pyinstaller
+    freeze_support()
     # creating processes
     frontend_thread = Process(target=ui_start)
     backend_thread = Process(target=backend)

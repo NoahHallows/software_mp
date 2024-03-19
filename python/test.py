@@ -1,18 +1,13 @@
-class DataCreator:
-    def __init__(self):
-        self.data = [1, 2, 3]
+import concurrent.futures
 
-    def get_data(self):
-        return self.data
+def worker(n):
+    print(f"Worker thread running\{n}")
 
-class DataConsumer:
-    def __init__(self):
-        creator = DataCreator()
-        self.data = creator.get_data()
+pool = concurrent.futures.ThreadPoolExecutor(max_workers=2)
 
-    def print_data(self):
-        print(self.data)
+pool.submit(worker, 1)
+pool.submit(worker, 2)
 
+pool.shutdown(wait=True)
 
-DataCreator.__init__(self)
-DataConsumer.__init__(self)
+print("Main thread continuing to run")

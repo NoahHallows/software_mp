@@ -27,20 +27,20 @@ class Window(QDialog):
             t1.start()
             active = True
 
-        
+
     def update_progress_bar(self):
         global active
         for n in range(1, 101):
             self.progress_bar.setValue(n)
             sleep(0.5)
         active = False
-        
-    
+
+
     @Slot()
     def cancel(self):
         print("Cancel button was clicked")
         self.close()
-    
+
     def __init__(self):
         super().__init__(parent=None)
         self.setWindowTitle("QDialog")
@@ -66,8 +66,8 @@ class Window(QDialog):
         button2.clicked.connect(self.checker)
         button3.clicked.connect(self.checker)
 
-        #fileName = QFileDialog.getOpenFileName(self, ("Open Image"), "/home/noah", ("Image Files (*.png *.jpg *.bmp)"))
-        #print(fileName)
+        fileName = QFileDialog.getOpenFileName(self, ("Open Image"), "/home/noah", ("Image Files (*.png *.jpg *.bmp)"))
+        print(fileName)
         self.buttons = QDialogButtonBox()
         self.buttons.setStandardButtons(
             QDialogButtonBox.StandardButton.Cancel
@@ -77,7 +77,7 @@ class Window(QDialog):
         self.buttons.rejected.connect(self.reject)
         dialogLayout.addWidget(self.buttons)
         self.setLayout(dialogLayout)
-        
+
 def example(array):
     sleep(5)
 
