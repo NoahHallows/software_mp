@@ -14,6 +14,7 @@ import concurrent.futures
 progress = Value('i', 0)
 images_to_search = []
 event = Event()
+exit_event = Event()
 data_queue = Queue()
 
 class Window(QDialog):
@@ -77,16 +78,11 @@ class Window(QDialog):
             msgBox.setText("Enter required information")
             msgBox.exec()
 
-
-    @Slot()
-    def cancel(self):
-        self.close()
-
     def __init__(self):
         # Set overlay_image_location to none in case it's not applicable
         self.overlay_image_location = None
         super().__init__(parent=None)
-        self.setWindowTitle("Face removal tool v0.8")
+        self.setWindowTitle("Face removal tool v0.8 beta")
         dialogLayout = QVBoxLayout()
         #formLayout = QFormLayout()
         gridLayout = QGridLayout()
@@ -191,6 +187,8 @@ class backend:
         window = Window()
         # Wait for trigger
         event.wait()
+        if exit_event.is_set():
+            exit()
         # Get input data
         input_data = data_queue.get()
         self.action = input_data[0]
@@ -363,6 +361,8 @@ def ui_start():
     app = QApplication([])
     window = Window()
     window.show()
+    exit_event.set()
+    event.set()
     sys.exit(app.exec())
 
 def main():
