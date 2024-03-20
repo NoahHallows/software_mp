@@ -164,7 +164,7 @@ class Window(QDialog):
             self.select_overlay_text_box.clear()
             # Use regular expression to find the file path
             self.overlay_image_location = re.search(r"'(.*?)'", str(overlay_image_location_untrimmed)).group(1)
-            self.select_overlay_text_box.setText(overlay_image_location)
+            self.select_overlay_text_box.setText(self.overlay_image_location)
 
     # Logic for selecting image directory
     @Slot()
@@ -197,9 +197,13 @@ class backend:
         self.overlay_image_location = input_data[3]
         # Call function to spawn processing threads
         self.start(self.images_to_search, self.action)
+#        sys.exit(app.exec())
+#        backend()
+
 
     def start(self, images_to_search, action):
         progress.value = 0
+        print(self.overlay_image_location)
         # Process the image contaning the face to search for
         try:
             face_to_search_for = face_recognition.load_image_file(self.target_face_location)
@@ -310,7 +314,6 @@ class editing_image():
         return image_bgr
 
     def replace(background, overlay, target_face_location, scale_factor):
-        # Unpack the location
         top, right, bottom, left = target_face_location
         # Scale face_location coordinates up to the original image size
         top = int(top / scale_factor)
@@ -319,7 +322,8 @@ class editing_image():
         left = int(left / scale_factor)
         # Calculate the width and height of the bounding box
         width = right - left
-        height = botton - top
+        height = bottom - top
+
         # Expand the bounding box by the constant value
         top = max(0, top - 10)
         bottom = min(background.shape[0], bottom + 10)
@@ -361,9 +365,8 @@ def ui_start():
     app = QApplication([])
     window = Window()
     window.show()
-    exit_event.set()
-    event.set()
     sys.exit(app.exec())
+
 
 def main():
     # For pyinstaller
@@ -373,7 +376,12 @@ def main():
     backend_thread = Process(target=backend)
     frontend_thread.start()
     backend_thread.start()
+    print("1")
     frontend_thread.join()
+    print("2")
+    exit_event.set()
+    event.set()
+    print("3")
     backend_thread.join()
 
 if __name__ == "__main__":
