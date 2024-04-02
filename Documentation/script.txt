@@ -1,0 +1,8 @@
+slide 1
+There are a significant number of photos taken which poses a significant chanllenge to people who want to maintain their anonminity. My program attempts to solve this problem by giving these people a automated system to remove their face from these images, manitining their anonminity
+Silde 2
+There were several challengers to overcome when coding this software. The first issue I faced was selection of the appropreate face recognition library to identify the correct face. I chose an older python library called face_recognition. However this library isn't perfect as it only runs on the cpu. This leads to my next issue, performance. Cpu's are not particularly fast at running these kinds of algorithms and it would be better to run it on a gpu however this library doesn't support this. As a result I have chosen to implement multi threading to run the processing on all cpu cores which signicantly improves performance. Additionally mutlithreading allows me to run the frontend and backend on seperate threads, ensuring the ui remains responsive while the backend is processing images. I uses the python version of the popular qt to make my graphical user interface, makeing it easy for me to create a gui that follows ui design standards. Both multithreading and ui design allowed my gui to be easy and intuituve for the user to understand and makes this application approachable for the avaerage user.
+Slide 3	
+This program makes use of a variery of data types including some more advanced data types such as mutiprocessing thread safe queues and image arrays. There is also significant use of other data types such as list and ints ect to store other types of data such as the list of images to be searched.
+Slide 4
+
